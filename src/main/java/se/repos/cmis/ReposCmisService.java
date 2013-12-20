@@ -44,12 +44,16 @@ import org.apache.chemistry.opencmis.commons.impl.server.AbstractCmisService;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.spi.Holder;
 
+import se.repos.cms.backend.filehead.LocalRepoRevision;
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
 import se.simonsoft.cms.item.CmsItemKind;
 import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.commit.CmsCommit;
+import se.simonsoft.cms.item.commit.CmsPatchItem;
+import se.simonsoft.cms.item.commit.CmsPatchset;
+import se.simonsoft.cms.item.commit.FileDelete;
 import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 
@@ -62,8 +66,6 @@ public class ReposCmisService extends AbstractCmisService {
     private CallContext context;
     private CmsRepository repository;
     private CmsItemLookup lookup;
-    // TODO Remove this suppression.
-    @SuppressWarnings("unused")
     private CmsCommit commit;
     private final ArrayList<TypeDefinition> types;
 
@@ -164,7 +166,6 @@ public class ReposCmisService extends AbstractCmisService {
             ExtensionsData extension) {
         ObjectInFolderListImpl children = new ObjectInFolderListImpl();
         CmsItemId itemID = new CmsItemIdUrl(this.repository, folderId);
-        // TODO Catch {@link CmsItemNotFoundException}.
         CmsItem folder = this.lookup.getItem(itemID);
         if (folder.getKind() != CmsItemKind.Folder) {
             return children;
@@ -183,7 +184,6 @@ public class ReposCmisService extends AbstractCmisService {
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includeRelativePathSegment, ExtensionsData extension) {
         CmsItemId objectCmsId = new CmsItemIdUrl(this.repository, objectId);
-        // TODO Catch {@link CmsItemNotFoundException}.
         CmsItem object = this.lookup.getItem(objectCmsId);
         ArrayList<ObjectParentData> parentData = new ArrayList<ObjectParentData>();
         for (CmsItemPath parentPath : object.getId().getRelPath().getAncestors()) {
@@ -200,7 +200,6 @@ public class ReposCmisService extends AbstractCmisService {
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
         CmsItemId objectCmsId = new CmsItemIdUrl(this.repository, objectId);
-        // TODO Catch {@link CmsItemNotFoundException}.
         CmsItem object = this.lookup.getItem(objectCmsId);
         return new ReposCmsItemObjectData(object);
     }
@@ -225,8 +224,10 @@ public class ReposCmisService extends AbstractCmisService {
     @Override
     public ObjectData getFolderParent(String repositoryId, String folderId,
             String filter, ExtensionsData extension) {
-        // TODO Implement this method.
-        throw new CmisNotSupportedException("Not supported!");
+        CmsItemPath itemPath = new CmsItemPath(folderId);
+        CmsItemPath parentPath = itemPath.getParent();
+        CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, parentPath));
+        return new ReposCmsItemObjectData(item);
     }
 
     @Override
@@ -234,6 +235,7 @@ public class ReposCmisService extends AbstractCmisService {
             String filter, String orderBy, Boolean includeAllowableActions,
             IncludeRelationships includeRelationships, String renditionFilter,
             BigInteger maxItems, BigInteger skipCount, ExtensionsData extension) {
+        // TODO Implement this method.
         throw new CmisNotSupportedException("Not supported!");
     }
 
@@ -250,6 +252,7 @@ public class ReposCmisService extends AbstractCmisService {
     public String createDocumentFromSource(String repositoryId, String sourceId,
             Properties properties, String folderId, VersioningState versioningState,
             List<String> policies, Acl addAces, Acl removeAces, ExtensionsData extension) {
+        // TODO Implement this method.
         throw new CmisNotSupportedException("Not supported!");
     }
 
@@ -351,7 +354,6 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
-        // TODO Implement this method.
         return this.getObject(repositoryId, objectId, filter, includeAllowableActions,
                 includeRelationships, renditionFilter, includePolicyIds, includeAcl,
                 extension);
@@ -367,7 +369,10 @@ public class ReposCmisService extends AbstractCmisService {
     @Override
     public void removeObjectFromFolder(String repositoryId, String objectId,
             String folderId, ExtensionsData extension) {
-        // TODO Implement this method.
-        throw new CmisNotSupportedException("Not supported!");
+        CmsItemPath deletePath = new CmsItemPath(folderId).append(objectId);
+        CmsPatchItem patchItem = new FileDelete(deletePath);
+        CmsPatchset change = new CmsPatchset(this.repository, new LocalRepoRevision());
+        change.add(patchItem);
+        this.commit.run(change);
     }
 }

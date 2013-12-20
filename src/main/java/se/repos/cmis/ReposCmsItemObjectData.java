@@ -24,7 +24,7 @@ class ReposCmsItemObjectData implements ObjectData {
     private final CmsItem item;
     private final Set<Action> actionSet;
 
-    ReposCmsItemObjectData(CmsItem item) {
+    public ReposCmsItemObjectData(CmsItem item) {
         this.item = item;
         this.actionSet = new HashSet<Action>();
 
