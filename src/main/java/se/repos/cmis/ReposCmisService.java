@@ -10,11 +10,17 @@ import java.util.List;
 
 import javax.inject.Inject;
 
+import org.apache.chemistry.opencmis.commons.data.Acl;
+import org.apache.chemistry.opencmis.commons.data.ContentStream;
 import org.apache.chemistry.opencmis.commons.data.ExtensionsData;
+import org.apache.chemistry.opencmis.commons.data.FailedToDeleteData;
 import org.apache.chemistry.opencmis.commons.data.ObjectData;
+import org.apache.chemistry.opencmis.commons.data.ObjectInFolderContainer;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderData;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderList;
+import org.apache.chemistry.opencmis.commons.data.ObjectList;
 import org.apache.chemistry.opencmis.commons.data.ObjectParentData;
+import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinitionList;
@@ -25,6 +31,9 @@ import org.apache.chemistry.opencmis.commons.enums.CapabilityJoin;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityQuery;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityRenditions;
 import org.apache.chemistry.opencmis.commons.enums.IncludeRelationships;
+import org.apache.chemistry.opencmis.commons.enums.UnfileObject;
+import org.apache.chemistry.opencmis.commons.enums.VersioningState;
+import org.apache.chemistry.opencmis.commons.exceptions.CmisNotSupportedException;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.DocumentTypeDefinitionImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.FolderTypeDefinitionImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderListImpl;
@@ -33,6 +42,7 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryInfoImpl
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeDefinitionListImpl;
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractCmisService;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
+import org.apache.chemistry.opencmis.commons.spi.Holder;
 
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
@@ -46,13 +56,14 @@ import se.simonsoft.cms.item.info.CmsItemLookup;
 /**
  * CMIS Service Implementation.
  */
-// TODO Where/how do I give Chemistry read/write access to the items?
 public class ReposCmisService extends AbstractCmisService {
 
     private final String repositoryRoot;
     private CallContext context;
     private CmsRepository repository;
     private CmsItemLookup lookup;
+    // TODO Remove this suppression.
+    @SuppressWarnings("unused")
     private CmsCommit commit;
     private final ArrayList<TypeDefinition> types;
 
@@ -117,7 +128,6 @@ public class ReposCmisService extends AbstractCmisService {
         capabilities.setIsPwcSearchable(false);
         capabilities.setIsPwcUpdatable(false);
         capabilities.setCapabilityQuery(CapabilityQuery.NONE);
-        // TODO Does ReposWeb have a change log?
         capabilities.setCapabilityChanges(CapabilityChanges.NONE);
         capabilities
                 .setCapabilityContentStreamUpdates(CapabilityContentStreamUpdates.ANYTIME);
@@ -193,5 +203,171 @@ public class ReposCmisService extends AbstractCmisService {
         // TODO Catch {@link CmsItemNotFoundException}.
         CmsItem object = this.lookup.getItem(objectCmsId);
         return new ReposCmsItemObjectData(object);
+    }
+
+    @Override
+    public List<ObjectInFolderContainer> getDescendants(String repositoryId,
+            String folderId, BigInteger depth, String filter,
+            Boolean includeAllowableActions, IncludeRelationships includeRelationships,
+            String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public List<ObjectInFolderContainer> getFolderTree(String repositoryId,
+            String folderId, BigInteger depth, String filter,
+            Boolean includeAllowableActions, IncludeRelationships includeRelationships,
+            String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public ObjectData getFolderParent(String repositoryId, String folderId,
+            String filter, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public ObjectList getCheckedOutDocs(String repositoryId, String folderId,
+            String filter, String orderBy, Boolean includeAllowableActions,
+            IncludeRelationships includeRelationships, String renditionFilter,
+            BigInteger maxItems, BigInteger skipCount, ExtensionsData extension) {
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public String createDocument(String repositoryId, Properties properties,
+            String folderId, ContentStream contentStream,
+            VersioningState versioningState, List<String> policies, Acl addAces,
+            Acl removeAces, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public String createDocumentFromSource(String repositoryId, String sourceId,
+            Properties properties, String folderId, VersioningState versioningState,
+            List<String> policies, Acl addAces, Acl removeAces, ExtensionsData extension) {
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public String createFolder(String repositoryId, Properties properties,
+            String folderId, List<String> policies, Acl addAces, Acl removeAces,
+            ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public ObjectData getObjectByPath(String repositoryId, String path, String filter,
+            Boolean includeAllowableActions, IncludeRelationships includeRelationships,
+            String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
+            ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public ContentStream getContentStream(String repositoryId, String objectId,
+            String streamId, BigInteger offset, BigInteger length,
+            ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void moveObject(String repositoryId, Holder<String> objectId,
+            String targetFolderId, String sourceFolderId, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void deleteObjectOrCancelCheckOut(String repositoryId, String objectId,
+            Boolean allVersions, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public FailedToDeleteData deleteTree(String repositoryId, String folderId,
+            Boolean allVersions, UnfileObject unfileObjects, Boolean continueOnFailure,
+            ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void setContentStream(String repositoryId, Holder<String> objectId,
+            Boolean overwriteFlag, Holder<String> changeToken,
+            ContentStream contentStream, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void appendContentStream(String repositoryId, Holder<String> objectId,
+            Holder<String> changeToken, ContentStream contentStream, boolean isLastChunk,
+            ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void deleteContentStream(String repositoryId, Holder<String> objectId,
+            Holder<String> changeToken, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void checkOut(String repositoryId, Holder<String> objectId,
+            ExtensionsData extension, Holder<Boolean> contentCopied) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void cancelCheckOut(String repositoryId, String objectId,
+            ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void checkIn(String repositoryId, Holder<String> objectId, Boolean major,
+            Properties properties, ContentStream contentStream, String checkinComment,
+            List<String> policies, Acl addAces, Acl removeAces, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public ObjectData getObjectOfLatestVersion(String repositoryId, String objectId,
+            String versionSeriesId, Boolean major, String filter,
+            Boolean includeAllowableActions, IncludeRelationships includeRelationships,
+            String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
+            ExtensionsData extension) {
+        // TODO Implement this method.
+        return this.getObject(repositoryId, objectId, filter, includeAllowableActions,
+                includeRelationships, renditionFilter, includePolicyIds, includeAcl,
+                extension);
+    }
+
+    @Override
+    public void addObjectToFolder(String repositoryId, String objectId, String folderId,
+            Boolean allVersions, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
+    }
+
+    @Override
+    public void removeObjectFromFolder(String repositoryId, String objectId,
+            String folderId, ExtensionsData extension) {
+        // TODO Implement this method.
+        throw new CmisNotSupportedException("Not supported!");
     }
 }

@@ -49,10 +49,10 @@ public class ReposCmisServiceFactory extends AbstractServiceFactory {
         // TODO Add authentication here.
 
         ReposCmisService service = new ReposCmisService(this.repositoryRoot);
+        service.setCallContext(context);
         CmisServiceWrapper<ReposCmisService> wrapperService = new CmisServiceWrapper<ReposCmisService>(
                 service, DEFAULT_MAX_ITEMS_TYPES, DEFAULT_DEPTH_TYPES,
                 DEFAULT_MAX_ITEMS_OBJECTS, DEFAULT_DEPTH_OBJECTS);
-        service.setCallContext(context);
         return wrapperService;
     }
 }
