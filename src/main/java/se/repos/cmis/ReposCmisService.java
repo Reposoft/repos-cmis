@@ -46,6 +46,7 @@ import se.simonsoft.cms.item.info.CmsItemLookup;
 /**
  * CMIS Service Implementation.
  */
+// TODO Where/how do I give Chemistry read/write access to the items?
 public class ReposCmisService extends AbstractCmisService {
 
     private final String repositoryRoot;
@@ -160,7 +161,7 @@ public class ReposCmisService extends AbstractCmisService {
         }
         ArrayList<ObjectInFolderData> objectData = new ArrayList<ObjectInFolderData>();
         for (CmsItem item : this.lookup.getImmediates(itemID)) {
-            objectData.add(toObjectInFolderData(item));
+            objectData.add(new ReposCmsItemObjectInFolderData(item));
         }
         children.setObjects(objectData);
         return children;
@@ -178,7 +179,7 @@ public class ReposCmisService extends AbstractCmisService {
         for (CmsItemPath parentPath : object.getId().getRelPath().getAncestors()) {
             CmsItemId parentId = new CmsItemIdUrl(this.repository, parentPath);
             CmsItem parent = this.lookup.getItem(parentId);
-            parentData.add(toObjectParentData(parent));
+            parentData.add(new ReposCmsItemObjectParentData(parent));
         }
         return parentData;
     }
@@ -191,21 +192,6 @@ public class ReposCmisService extends AbstractCmisService {
         CmsItemId objectCmsId = new CmsItemIdUrl(this.repository, objectId);
         // TODO Catch {@link CmsItemNotFoundException}.
         CmsItem object = this.lookup.getItem(objectCmsId);
-        return toObjectData(object);
-    }
-
-    private static ObjectData toObjectData(CmsItem item) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    private static ObjectInFolderData toObjectInFolderData(CmsItem item) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    private static ObjectParentData toObjectParentData(CmsItem item) {
-        // TODO Auto-generated method stub
-        return null;
+        return new ReposCmsItemObjectData(object);
     }
 }
