@@ -20,20 +20,15 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.FolderTypeDefiniti
 
 import se.simonsoft.cms.item.CmsItem;
 
-class ReposCmsItemObjectData implements ObjectData {
+class ReposObjectData implements ObjectData {
     private final CmsItem item;
     private final Set<Action> actionSet;
 
-    public ReposCmsItemObjectData(CmsItem item) {
+    public ReposObjectData(CmsItem item) {
         this.item = item;
         this.actionSet = new HashSet<Action>();
 
-        // TODO Can CmsItem support these actions?
-        // this.actionSet.add(Action.CAN_DELETE_CONTENT_STREAM);
-        // this.actionSet.add(Action.CAN_GET_CONTENT_STREAM);
-        // this.actionSet.add(Action.CAN_SET_CONTENT_STREAM);
-
-        // TODO What are these options?
+        // TODO Should Repos support working copies?
         // this.actionSet.add(Action.CAN_CHECK_OUT);
         // this.actionSet.add(Action.CAN_CANCEL_CHECK_OUT);
         // this.actionSet.add(Action.CAN_CHECK_IN);

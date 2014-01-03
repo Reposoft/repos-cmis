@@ -4,17 +4,18 @@ import java.util.List;
 
 import org.apache.chemistry.opencmis.commons.data.CmisExtensionElement;
 import org.apache.chemistry.opencmis.commons.data.ObjectData;
-import org.apache.chemistry.opencmis.commons.data.ObjectParentData;
+import org.apache.chemistry.opencmis.commons.data.ObjectInFolderData;
 
 import se.simonsoft.cms.item.CmsItem;
+import se.simonsoft.cms.item.CmsItemPath;
 
-public class ReposCmsItemObjectParentData implements ObjectParentData {
+public class ReposObjectInFolderData implements ObjectInFolderData {
     private final CmsItem item;
     private final ObjectData itemData;
 
-    public ReposCmsItemObjectParentData(CmsItem item) {
+    public ReposObjectInFolderData(CmsItem item) {
         this.item = item;
-        this.itemData = new ReposCmsItemObjectData(this.item);
+        this.itemData = new ReposObjectData(item);
     }
 
     @Override
@@ -33,8 +34,11 @@ public class ReposCmsItemObjectParentData implements ObjectParentData {
     }
 
     @Override
-    public String getRelativePathSegment() {
-        return this.item.getId().getRelPath().getPath();
+    public String getPathSegment() {
+        CmsItemPath itemPath = this.item.getId().getRelPath();
+        String lastSegment = itemPath.getPathSegments().get(
+                itemPath.getPathSegmentsCount() - 1);
+        return lastSegment;
     }
 
 }
