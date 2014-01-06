@@ -63,9 +63,9 @@ import se.simonsoft.cms.item.info.CmsItemLookup;
 /**
  * CMIS Service Implementation.
  */
+// TODO Have repository dependencies injected.
 public class ReposCmisService extends AbstractCmisService {
 
-    private final String repositoryRoot;
     private CallContext context;
     private CmsRepository repository;
     private CmsItemLookup lookup;
@@ -74,8 +74,7 @@ public class ReposCmisService extends AbstractCmisService {
     private RepoRevision baseRevision;
     private RandomString randomString;
 
-    public ReposCmisService(String repositoryRoot) {
-        this.repositoryRoot = repositoryRoot;
+    public ReposCmisService() {
         this.types = new ArrayList<TypeDefinition>();
         this.types.add(new DocumentTypeDefinitionImpl());
         this.types.add(new FolderTypeDefinitionImpl());
@@ -128,7 +127,7 @@ public class ReposCmisService extends AbstractCmisService {
         repositoryInfo.setProductName("Repos CMIS Repository");
         repositoryInfo.setProductVersion("1.0");
         repositoryInfo.setVendorName("Repos Mjukvara AB");
-        repositoryInfo.setRootFolder(this.repositoryRoot);
+        repositoryInfo.setRootFolder(this.repository.getPath());
         repositoryInfo.setThinClientUri("");
 
         RepositoryCapabilitiesImpl capabilities = new RepositoryCapabilitiesImpl();

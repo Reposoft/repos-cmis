@@ -142,6 +142,11 @@
             <artifactId>guice-multibindings</artifactId>
             <version>3.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.chemistry.opencmis</groupId>
+            <artifactId>chemistry-opencmis-test-tck</artifactId>
+            <version>${opencmis.version}</version>
+        </dependency>
     </dependencies>
     <packaging>war</packaging>
 </project>

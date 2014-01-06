@@ -32,8 +32,6 @@ public class ReposCmisServiceFactory extends AbstractServiceFactory {
     /** Default depth value for getDescendants(). */
     private static final BigInteger DEFAULT_DEPTH_OBJECTS = BigInteger.valueOf(10);
 
-    private String repositoryRoot;
-
     @Override
     public void init(Map<String, String> parameters) {
         return;
@@ -48,11 +46,13 @@ public class ReposCmisServiceFactory extends AbstractServiceFactory {
     public CmisService getService(CallContext context) {
         // TODO Add authentication here.
 
-        ReposCmisService service = new ReposCmisService(this.repositoryRoot);
+        ReposCmisService service = new ReposCmisService();
         service.setCallContext(context);
+        @SuppressWarnings("unused")
         CmisServiceWrapper<ReposCmisService> wrapperService = new CmisServiceWrapper<ReposCmisService>(
                 service, DEFAULT_MAX_ITEMS_TYPES, DEFAULT_DEPTH_TYPES,
                 DEFAULT_MAX_ITEMS_OBJECTS, DEFAULT_DEPTH_OBJECTS);
-        return wrapperService;
+        // TODO Return wrapperService instead.
+        return service;
     }
 }
