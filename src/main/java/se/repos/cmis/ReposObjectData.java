@@ -91,7 +91,6 @@ class ReposObjectData implements ObjectData {
 
     @Override
     public List<ObjectData> getRelationships() {
-        // TODO What is a relationship and does ReposWeb have them?
         return null;
     }
 

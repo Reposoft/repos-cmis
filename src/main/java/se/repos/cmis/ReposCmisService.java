@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.inject.Inject;
-
 import org.apache.chemistry.opencmis.commons.data.Acl;
 import org.apache.chemistry.opencmis.commons.data.ContentStream;
 import org.apache.chemistry.opencmis.commons.data.ExtensionsData;
@@ -63,42 +61,33 @@ import se.simonsoft.cms.item.info.CmsItemLookup;
 /**
  * CMIS Service Implementation.
  */
-// TODO Have repository dependencies injected.
 public class ReposCmisService extends AbstractCmisService {
 
-    private CallContext context;
-    private CmsRepository repository;
-    private CmsItemLookup lookup;
-    private CmsCommit commit;
+    private final CmsRepository repository;
+    private final CmsItemLookup lookup;
+    private final CmsCommit commit;
+
     private final ArrayList<TypeDefinition> types;
-    private RepoRevision baseRevision;
+
+    private CallContext context;
+    private RepoRevision currentRevision;
     private RandomString randomString;
 
-    public ReposCmisService() {
+    public ReposCmisService(CmsRepository repository, CmsCommit commit,
+            CmsItemLookup lookup, RepoRevision currentRevision, CallContext context) {
+        this.repository = repository;
+        this.commit = commit;
+        this.lookup = lookup;
+        this.currentRevision = currentRevision;
+        this.context = context;
         this.types = new ArrayList<TypeDefinition>();
         this.types.add(new DocumentTypeDefinitionImpl());
         this.types.add(new FolderTypeDefinitionImpl());
         this.randomString = new RandomString(15);
     }
 
-    @Inject
-    public void setCmsRepository(CmsRepository repository) {
-        this.repository = repository;
-    }
-
-    @Inject
-    public void setBaseRevision(RepoRevision baseRevision) {
-        this.baseRevision = baseRevision;
-    }
-
-    @Inject
-    public void setCmsCommit(CmsCommit commit) {
-        this.commit = commit;
-    }
-
-    @Inject
-    public void setCmsItemLookup(CmsItemLookup lookup) {
-        this.lookup = lookup;
+    public void setCurrentRevision(RepoRevision currentRevision) {
+        this.currentRevision = currentRevision;
     }
 
     /**
@@ -261,7 +250,7 @@ public class ReposCmisService extends AbstractCmisService {
         String newItemName = this.randomString.nextString();
         CmsItemPath newItemPath = folder.getRelPath().append(newItemName);
         CmsPatchItem fileAdd = new FileAdd(newItemPath, contentStream.getStream());
-        CmsPatchset changes = new CmsPatchset(this.repository, this.baseRevision);
+        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
         changes.add(fileAdd);
         this.commit.run(changes);
         // TODO Is this the right return value?
@@ -277,7 +266,7 @@ public class ReposCmisService extends AbstractCmisService {
         String newFolderName = this.randomString.nextString();
         CmsItemPath newFolderPath = parentId.getRelPath().append(newFolderName);
         CmsPatchItem folderAdd = new FolderAdd(newFolderPath);
-        CmsPatchset changes = new CmsPatchset(this.repository, this.baseRevision);
+        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
         changes.add(folderAdd);
         this.commit.run(changes);
         return newFolderName;
@@ -297,7 +286,7 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean allVersions, ExtensionsData extension) {
         CmsItemId itemId = new CmsItemIdUrl(this.repository, objectId);
         CmsPatchItem delete = new FileDelete(itemId.getRelPath());
-        CmsPatchset changes = new CmsPatchset(this.repository, this.baseRevision);
+        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
         changes.add(delete);
         this.commit.run(changes);
     }
@@ -307,7 +296,7 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean allVersions, UnfileObject unfileObjects, Boolean continueOnFailure,
             ExtensionsData extension) {
         CmsPatchItem delete = new FolderDelete(new CmsItemPath(folderId));
-        CmsPatchset changes = new CmsPatchset(this.repository, this.baseRevision);
+        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
         changes.add(delete);
         this.commit.run(changes);
         return new FailedToDeleteDataImpl();
@@ -337,7 +326,7 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, ExtensionsData extension) {
         CmsItemPath deletePath = new CmsItemPath(folderId).append(objectId);
         CmsPatchItem patchItem = new FileDelete(deletePath);
-        CmsPatchset change = new CmsPatchset(this.repository, this.baseRevision);
+        CmsPatchset change = new CmsPatchset(this.repository, this.currentRevision);
         change.add(patchItem);
         this.commit.run(change);
     }
