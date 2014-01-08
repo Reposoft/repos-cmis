@@ -1,5 +1,7 @@
 package se.repos.cmis;
 
+import java.io.File;
+
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractServiceFactory;
 
 import se.repos.authproxy.AuthFailedException;
@@ -24,6 +26,7 @@ public class TestModule extends AbstractModule {
         this.bind(CmsCommit.class).to(LocalCmsCommit.class);
         this.bind(CmsItemLookup.class).to(LocalCmsItemLookup.class);
 
+        new File("/tmp/repos").mkdir();
         CmsRepository repo = new CmsRepository("/tmp", "repos");
         this.bind(CmsRepository.class).toInstance(repo);
         ReposCurrentUser currentUser = new ReposCurrentUser() {

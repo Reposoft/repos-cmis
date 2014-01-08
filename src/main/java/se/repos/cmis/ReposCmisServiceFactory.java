@@ -18,9 +18,6 @@ import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.commit.CmsCommit;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 
-/**
- * CMIS Service Factory.
- */
 public class ReposCmisServiceFactory extends AbstractServiceFactory {
     private static final BigInteger DEFAULT_MAX_ITEMS_TYPES = BigInteger.valueOf(50);
     private static final BigInteger DEFAULT_DEPTH_TYPES = BigInteger.valueOf(-1);
@@ -40,7 +37,7 @@ public class ReposCmisServiceFactory extends AbstractServiceFactory {
         this.lookup = lookup;
         this.currentRevision = currentRevision;
     }
-    
+
     public void setCurrentRevision(RepoRevision currentRevision) {
         this.currentRevision = currentRevision;
     }

@@ -118,6 +118,7 @@ public class ReposCmisService extends AbstractCmisService {
         repositoryInfo.setVendorName("Repos Mjukvara AB");
         repositoryInfo.setRootFolder(this.repository.getPath());
         repositoryInfo.setThinClientUri("");
+        repositoryInfo.setChangesIncomplete(false);
 
         RepositoryCapabilitiesImpl capabilities = new RepositoryCapabilitiesImpl();
         capabilities.setCapabilityAcl(CapabilityAcl.NONE);
@@ -165,7 +166,7 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includePathSegment, BigInteger maxItems, BigInteger skipCount,
             ExtensionsData extension) {
         ObjectInFolderListImpl children = new ObjectInFolderListImpl();
-        CmsItemId itemID = new CmsItemIdUrl(this.repository, folderId);
+        CmsItemId itemID = this.getItemId(folderId);
         CmsItem folder = this.lookup.getItem(itemID);
         if (folder.getKind() != CmsItemKind.Folder) {
             return children;
@@ -183,7 +184,7 @@ public class ReposCmisService extends AbstractCmisService {
             String filter, Boolean includeAllowableActions,
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includeRelativePathSegment, ExtensionsData extension) {
-        CmsItemId objectCmsId = new CmsItemIdUrl(this.repository, objectId);
+        CmsItemId objectCmsId = this.getItemId(objectId);
         CmsItem object = this.lookup.getItem(objectCmsId);
         ArrayList<ObjectParentData> parentData = new ArrayList<ObjectParentData>();
         for (CmsItemPath parentPath : object.getId().getRelPath().getAncestors()) {
@@ -199,7 +200,7 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
-        CmsItemId objectCmsId = new CmsItemIdUrl(this.repository, objectId);
+        CmsItemId objectCmsId = this.getItemId(objectId);
         CmsItem object = this.lookup.getItem(objectCmsId);
         return new ReposObjectData(object);
     }
@@ -209,7 +210,7 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, BigInteger depth, String filter,
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
-        CmsItem folder = this.lookup.getItem(new CmsItemIdUrl(this.repository, folderId));
+        CmsItem folder = this.lookup.getItem(this.getItemId(folderId));
         ObjectInFolderContainer folderContainer = new ReposObjectInFolderContainer(
                 folder, this.lookup);
         return folderContainer.getChildren();
@@ -220,7 +221,7 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, BigInteger depth, String filter,
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
-        CmsItem folder = this.lookup.getItem(new CmsItemIdUrl(this.repository, folderId));
+        CmsItem folder = this.lookup.getItem(this.getItemId(folderId));
         ObjectInFolderContainer folderContainer = new ReposObjectInFolderContainer(
                 folder, this.lookup);
         ArrayList<ObjectInFolderContainer> subFolders = new ArrayList<ObjectInFolderContainer>();
@@ -235,8 +236,7 @@ public class ReposCmisService extends AbstractCmisService {
     @Override
     public ObjectData getFolderParent(String repositoryId, String folderId,
             String filter, ExtensionsData extension) {
-        CmsItemPath itemPath = new CmsItemPath(folderId);
-        CmsItemPath parentPath = itemPath.getParent();
+        CmsItemPath parentPath = this.getItemId(folderId).getRelPath().getParent();
         CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, parentPath));
         return new ReposObjectData(item);
     }
@@ -246,7 +246,7 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, ContentStream contentStream,
             VersioningState versioningState, List<String> policies, Acl addAces,
             Acl removeAces, ExtensionsData extension) {
-        CmsItemId folder = new CmsItemIdUrl(this.repository, folderId);
+        CmsItemId folder = this.getItemId(folderId);
         // TODO Isn't there a new item name provided?
         String newItemName = this.randomString.nextString();
         CmsItemPath newItemPath = folder.getRelPath().append(newItemName);
@@ -262,7 +262,7 @@ public class ReposCmisService extends AbstractCmisService {
     public String createFolder(String repositoryId, Properties properties,
             String folderId, List<String> policies, Acl addAces, Acl removeAces,
             ExtensionsData extension) {
-        CmsItemId parentId = new CmsItemIdUrl(this.repository, folderId);
+        CmsItemId parentId = this.getItemId(folderId);
         // TODO Isn't there a new item name provided?
         String newFolderName = this.randomString.nextString();
         CmsItemPath newFolderPath = parentId.getRelPath().append(newFolderName);
@@ -278,15 +278,13 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
-        return new ReposObjectData(this.lookup.getItem(new CmsItemIdUrl(this.repository,
-                path)));
+        return new ReposObjectData(this.lookup.getItem(this.getItemId(path)));
     }
 
     @Override
     public void deleteObjectOrCancelCheckOut(String repositoryId, String objectId,
             Boolean allVersions, ExtensionsData extension) {
-        CmsItemId itemId = new CmsItemIdUrl(this.repository, objectId);
-        CmsPatchItem delete = new FileDelete(itemId.getRelPath());
+        CmsPatchItem delete = new FileDelete(this.getItemId(objectId).getRelPath());
         CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
         changes.add(delete);
         this.commit.run(changes);
@@ -296,7 +294,7 @@ public class ReposCmisService extends AbstractCmisService {
     public FailedToDeleteData deleteTree(String repositoryId, String folderId,
             Boolean allVersions, UnfileObject unfileObjects, Boolean continueOnFailure,
             ExtensionsData extension) {
-        CmsPatchItem delete = new FolderDelete(new CmsItemPath(folderId));
+        CmsPatchItem delete = new FolderDelete(this.getItemId(folderId).getRelPath());
         CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
         changes.add(delete);
         this.commit.run(changes);
@@ -317,7 +315,7 @@ public class ReposCmisService extends AbstractCmisService {
     @Override
     public void addObjectToFolder(String repositoryId, String objectId, String folderId,
             Boolean allVersions, ExtensionsData extension) {
-        CmsItemPath objectPath = new CmsItemPath(objectId);
+        CmsItemPath objectPath = this.getItemId(objectId).getRelPath();
         this.moveObject(repositoryId, new Holder<String>(objectId), folderId, objectPath
                 .getParent().getPath(), extension);
     }
@@ -325,10 +323,27 @@ public class ReposCmisService extends AbstractCmisService {
     @Override
     public void removeObjectFromFolder(String repositoryId, String objectId,
             String folderId, ExtensionsData extension) {
-        CmsItemPath deletePath = new CmsItemPath(folderId).append(objectId);
-        CmsPatchItem patchItem = new FileDelete(deletePath);
+        CmsPatchItem patchItem = new FileDelete(this.getItemId(objectId).getRelPath());
         CmsPatchset change = new CmsPatchset(this.repository, this.currentRevision);
         change.add(patchItem);
         this.commit.run(change);
+    }
+
+    /**
+     * Given an object Id String (which is an absolute path) convert it to a
+     * path relative to the repository root.
+     */
+    private CmsItemId getItemId(String objectId) {
+        String newPath;
+        if (objectId.startsWith(this.repository.getPath())) {
+            newPath = objectId.substring(this.repository.getPath().length());
+        } else {
+            newPath = objectId;
+        }
+        if (newPath.isEmpty()) {
+            // Return the root folder.
+            return this.repository.getItemId();
+        }
+        return new CmsItemIdUrl(this.repository, newPath);
     }
 }
