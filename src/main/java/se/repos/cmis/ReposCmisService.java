@@ -135,6 +135,7 @@ public class ReposCmisService extends AbstractCmisService {
         capabilities.setSupportsGetDescendants(true);
         capabilities.setSupportsGetFolderTree(true);
         capabilities.setCapabilityRendition(CapabilityRenditions.NONE);
+        repositoryInfo.setCapabilities(capabilities);
 
         return Collections.singletonList((RepositoryInfo) repositoryInfo);
     }

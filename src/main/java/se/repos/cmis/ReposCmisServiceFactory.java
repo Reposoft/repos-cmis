@@ -57,8 +57,6 @@ public class ReposCmisServiceFactory extends AbstractServiceFactory {
 
     @Override
     public CmisService getService(CallContext context) {
-        // TODO Add authentication here.
-
         ReposCmisService service = new ReposCmisService(this.repository, this.commit,
                 this.lookup, this.currentRevision, context);
         @SuppressWarnings("unused")
