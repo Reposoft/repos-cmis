@@ -1,9 +1,11 @@
 package se.repos.cmis;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.data.Acl;
 import org.apache.chemistry.opencmis.commons.data.AllowableActions;
 import org.apache.chemistry.opencmis.commons.data.ChangeEventInfo;
@@ -14,9 +16,12 @@ import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.RenditionData;
 import org.apache.chemistry.opencmis.commons.enums.Action;
 import org.apache.chemistry.opencmis.commons.enums.BaseTypeId;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.AccessControlListImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.AllowableActionsImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.DocumentTypeDefinitionImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.FolderTypeDefinitionImpl;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.ChangeEventInfoDataImpl;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.PolicyIdListImpl;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertiesImpl;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyStringImpl;
 
 import se.simonsoft.cms.item.CmsItem;
 
@@ -32,6 +37,11 @@ class ReposObjectData implements ObjectData {
         // this.actionSet.add(Action.CAN_CHECK_OUT);
         // this.actionSet.add(Action.CAN_CANCEL_CHECK_OUT);
         // this.actionSet.add(Action.CAN_CHECK_IN);
+
+        // TODO Should Repos support content streams?
+        // this.actionSet.add(Action.CAN_GET_CONTENT_STREAM);
+        // this.actionSet.add(Action.CAN_SET_CONTENT_STREAM);
+        // this.actionSet.add(Action.CAN_DELETE_CONTENT_STREAM);
 
         this.actionSet.add(Action.CAN_ADD_OBJECT_TO_FOLDER);
         this.actionSet.add(Action.CAN_REMOVE_OBJECT_FROM_FOLDER);
@@ -50,7 +60,7 @@ class ReposObjectData implements ObjectData {
 
     @Override
     public List<CmisExtensionElement> getExtensions() {
-        return null;
+        return new ArrayList<CmisExtensionElement>();
     }
 
     @Override
@@ -67,9 +77,9 @@ class ReposObjectData implements ObjectData {
     public BaseTypeId getBaseTypeId() {
         switch (this.item.getKind()) {
         case File:
-            return new DocumentTypeDefinitionImpl().getBaseTypeId();
+            return BaseTypeId.CMIS_DOCUMENT;
         case Folder:
-            return new FolderTypeDefinitionImpl().getBaseTypeId();
+            return BaseTypeId.CMIS_FOLDER;
         case Repository:
         case Symlink:
         default:
@@ -79,7 +89,13 @@ class ReposObjectData implements ObjectData {
 
     @Override
     public Properties getProperties() {
-        return null;
+        PropertiesImpl properties = new PropertiesImpl();
+        properties.addProperty(new PropertyStringImpl(PropertyIds.NAME, this.item.getId()
+                .getLogicalId()));
+        properties.addProperty(new PropertyStringImpl(PropertyIds.OBJECT_ID, this.item.getId()
+                .getLogicalIdFull()));
+        // TODO Set properties.
+        return properties;
     }
 
     @Override
@@ -91,31 +107,31 @@ class ReposObjectData implements ObjectData {
 
     @Override
     public List<ObjectData> getRelationships() {
-        return null;
+        return new ArrayList<ObjectData>();
     }
 
     @Override
     public ChangeEventInfo getChangeEventInfo() {
-        return null;
+        return new ChangeEventInfoDataImpl();
     }
 
     @Override
     public Acl getAcl() {
-        return null;
+        return new AccessControlListImpl();
     }
 
     @Override
     public Boolean isExactAcl() {
-        return null;
+        return Boolean.TRUE;
     }
 
     @Override
     public PolicyIdList getPolicyIds() {
-        return null;
+        return new PolicyIdListImpl();
     }
 
     @Override
     public List<RenditionData> getRenditions() {
-        return null;
+        return new ArrayList<RenditionData>();
     }
 }
