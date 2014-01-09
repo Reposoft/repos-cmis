@@ -27,7 +27,7 @@ public class TestModule extends AbstractModule {
         this.bind(CmsItemLookup.class).to(LocalCmsItemLookup.class);
 
         new File("/tmp/repos").mkdir();
-        CmsRepository repo = new CmsRepository("/tmp", "repos");
+        CmsRepository repo = new CmsRepository("http://localHost", "/tmp", "repos");
         this.bind(CmsRepository.class).toInstance(repo);
         ReposCurrentUser currentUser = new ReposCurrentUser() {
 

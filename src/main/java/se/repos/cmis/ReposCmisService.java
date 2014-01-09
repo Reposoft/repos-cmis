@@ -6,9 +6,11 @@ package se.repos.cmis;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.chemistry.opencmis.commons.data.Acl;
+import org.apache.chemistry.opencmis.commons.data.CmisExtensionElement;
 import org.apache.chemistry.opencmis.commons.data.ContentStream;
 import org.apache.chemistry.opencmis.commons.data.ExtensionsData;
 import org.apache.chemistry.opencmis.commons.data.FailedToDeleteData;
@@ -19,6 +21,7 @@ import org.apache.chemistry.opencmis.commons.data.ObjectInFolderList;
 import org.apache.chemistry.opencmis.commons.data.ObjectParentData;
 import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
+import org.apache.chemistry.opencmis.commons.definitions.PropertyDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinitionList;
 import org.apache.chemistry.opencmis.commons.enums.BaseTypeId;
@@ -28,6 +31,7 @@ import org.apache.chemistry.opencmis.commons.enums.CapabilityContentStreamUpdate
 import org.apache.chemistry.opencmis.commons.enums.CapabilityJoin;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityQuery;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityRenditions;
+import org.apache.chemistry.opencmis.commons.enums.ContentStreamAllowed;
 import org.apache.chemistry.opencmis.commons.enums.IncludeRelationships;
 import org.apache.chemistry.opencmis.commons.enums.UnfileObject;
 import org.apache.chemistry.opencmis.commons.enums.VersioningState;
@@ -38,6 +42,7 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderList
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryCapabilitiesImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryInfoImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeDefinitionListImpl;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeMutabilityImpl;
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractCmisService;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.spi.Holder;
@@ -80,9 +85,57 @@ public class ReposCmisService extends AbstractCmisService {
         this.lookup = lookup;
         this.currentRevision = currentRevision;
         this.context = context;
+
+        // Type definitions.
         this.types = new ArrayList<TypeDefinition>();
-        this.types.add(new DocumentTypeDefinitionImpl());
-        this.types.add(new FolderTypeDefinitionImpl());
+        DocumentTypeDefinitionImpl docType = new DocumentTypeDefinitionImpl();
+        docType.setBaseTypeId(BaseTypeId.CMIS_DOCUMENT);
+        // TODO Add content stream support?
+        docType.setContentStreamAllowed(ContentStreamAllowed.NOTALLOWED);
+        docType.setDescription("Document");
+        docType.setDisplayName("Document");
+        docType.setExtensions(new ArrayList<CmisExtensionElement>());
+        docType.setId(BaseTypeId.CMIS_DOCUMENT.toString());
+        docType.setIsControllableAcl(false);
+        docType.setIsControllablePolicy(false);
+        docType.setIsCreatable(true);
+        docType.setIsFileable(true);
+        docType.setIsFulltextIndexed(false);
+        docType.setIsIncludedInSupertypeQuery(false);
+        docType.setIsQueryable(false);
+        docType.setIsVersionable(false);
+        docType.setLocalName("Document");
+        docType.setLocalNamespace("");
+        docType.setParentTypeId(BaseTypeId.CMIS_DOCUMENT.toString());
+        docType.setPropertyDefinitions(new HashMap<String, PropertyDefinition<?>>());
+        docType.setQueryName("Document");
+        TypeMutabilityImpl mutable = new TypeMutabilityImpl();
+        mutable.setCanCreate(true);
+        mutable.setCanDelete(true);
+        mutable.setCanUpdate(true);
+        docType.setTypeMutability(mutable);
+        this.types.add(docType);
+
+        FolderTypeDefinitionImpl folder = new FolderTypeDefinitionImpl();
+        folder.setBaseTypeId(BaseTypeId.CMIS_FOLDER);
+        folder.setDescription("Folder");
+        folder.setDisplayName("Folder");
+        folder.setExtensions(new ArrayList<CmisExtensionElement>());
+        folder.setId(BaseTypeId.CMIS_FOLDER.toString());
+        folder.setIsControllableAcl(false);
+        folder.setIsControllablePolicy(false);
+        folder.setIsCreatable(true);
+        folder.setIsFileable(true);
+        folder.setIsFulltextIndexed(false);
+        folder.setIsIncludedInSupertypeQuery(false);
+        folder.setIsQueryable(false);
+        folder.setLocalName("Folder");
+        folder.setLocalNamespace("");
+        folder.setParentTypeId(BaseTypeId.CMIS_FOLDER.toString());
+        folder.setPropertyDefinitions(new HashMap<String, PropertyDefinition<?>>());
+        folder.setQueryName("Folder");
+        folder.setTypeMutability(mutable);
+        this.types.add(folder);
         this.randomString = new RandomString(15);
     }
 
@@ -329,21 +382,7 @@ public class ReposCmisService extends AbstractCmisService {
         this.commit.run(change);
     }
 
-    /**
-     * Given an object Id String (which is an absolute path) convert it to a
-     * path relative to the repository root.
-     */
     private CmsItemId getItemId(String objectId) {
-        String newPath;
-        if (objectId.startsWith(this.repository.getPath())) {
-            newPath = objectId.substring(this.repository.getPath().length());
-        } else {
-            newPath = objectId;
-        }
-        if (newPath.isEmpty()) {
-            // Return the root folder.
-            return this.repository.getItemId();
-        }
-        return new CmsItemIdUrl(this.repository, newPath);
+        return new CmsItemIdUrl(this.repository, objectId);
     }
 }
