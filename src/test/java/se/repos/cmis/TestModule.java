@@ -16,19 +16,22 @@ import se.simonsoft.cms.item.commit.CmsCommit;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.name.Names;
 
 public class TestModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        this.bind(ReposCmisServiceFactory.class);
         this.bind(AbstractServiceFactory.class).to(ReposCmisServiceFactory.class);
+        this.bind(ReposCmisServiceFactory.class);
         this.bind(CmsCommit.class).to(LocalCmsCommit.class);
         this.bind(CmsItemLookup.class).to(LocalCmsItemLookup.class);
+        this.bind(RepoRevision.class).toInstance(new LocalRepoRevision());
 
         new File("/tmp/repos").mkdir();
         CmsRepository repo = new CmsRepository("http://localHost", "/tmp", "repos");
         this.bind(CmsRepository.class).toInstance(repo);
+        
         ReposCurrentUser currentUser = new ReposCurrentUser() {
 
             @Override
@@ -57,6 +60,10 @@ public class TestModule extends AbstractModule {
             }
         };
         this.bind(ReposCurrentUser.class).toInstance(currentUser);
-        this.bind(RepoRevision.class).toInstance(new LocalRepoRevision());
+        this.bind(String.class).annotatedWith(Names.named("repositoryId")).toInstance("repo");
+        this.bind(ReposCmisRepository.class);
+        
+        ReposRepositoryManager manager = new ReposRepositoryManager();
+        bind(ReposRepositoryManager.class).toInstance(manager);
     }
 }

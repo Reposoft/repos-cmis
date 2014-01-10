@@ -5,142 +5,36 @@ package se.repos.cmis;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 
 import org.apache.chemistry.opencmis.commons.data.Acl;
-import org.apache.chemistry.opencmis.commons.data.CmisExtensionElement;
 import org.apache.chemistry.opencmis.commons.data.ContentStream;
 import org.apache.chemistry.opencmis.commons.data.ExtensionsData;
 import org.apache.chemistry.opencmis.commons.data.FailedToDeleteData;
 import org.apache.chemistry.opencmis.commons.data.ObjectData;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderContainer;
-import org.apache.chemistry.opencmis.commons.data.ObjectInFolderData;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderList;
 import org.apache.chemistry.opencmis.commons.data.ObjectParentData;
 import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinitionList;
-import org.apache.chemistry.opencmis.commons.enums.BaseTypeId;
-import org.apache.chemistry.opencmis.commons.enums.CapabilityAcl;
-import org.apache.chemistry.opencmis.commons.enums.CapabilityChanges;
-import org.apache.chemistry.opencmis.commons.enums.CapabilityContentStreamUpdates;
-import org.apache.chemistry.opencmis.commons.enums.CapabilityJoin;
-import org.apache.chemistry.opencmis.commons.enums.CapabilityQuery;
-import org.apache.chemistry.opencmis.commons.enums.CapabilityRenditions;
-import org.apache.chemistry.opencmis.commons.enums.ContentStreamAllowed;
 import org.apache.chemistry.opencmis.commons.enums.IncludeRelationships;
 import org.apache.chemistry.opencmis.commons.enums.UnfileObject;
 import org.apache.chemistry.opencmis.commons.enums.VersioningState;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.DocumentTypeDefinitionImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.FailedToDeleteDataImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.FolderTypeDefinitionImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderListImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryCapabilitiesImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryInfoImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeDefinitionListImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeMutabilityImpl;
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractCmisService;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
-import org.apache.chemistry.opencmis.commons.spi.Holder;
-
-import se.simonsoft.cms.item.CmsItem;
-import se.simonsoft.cms.item.CmsItemId;
-import se.simonsoft.cms.item.CmsItemKind;
-import se.simonsoft.cms.item.CmsItemPath;
-import se.simonsoft.cms.item.CmsRepository;
-import se.simonsoft.cms.item.RepoRevision;
-import se.simonsoft.cms.item.commit.CmsCommit;
-import se.simonsoft.cms.item.commit.CmsPatchItem;
-import se.simonsoft.cms.item.commit.CmsPatchset;
-import se.simonsoft.cms.item.commit.FileAdd;
-import se.simonsoft.cms.item.commit.FileDelete;
-import se.simonsoft.cms.item.commit.FolderAdd;
-import se.simonsoft.cms.item.commit.FolderDelete;
-import se.simonsoft.cms.item.impl.CmsItemIdUrl;
-import se.simonsoft.cms.item.info.CmsItemLookup;
 
 /**
  * CMIS Service Implementation.
  */
 public class ReposCmisService extends AbstractCmisService {
-
-    private final CmsRepository repository;
-    private final CmsItemLookup lookup;
-    private final CmsCommit commit;
-
-    private final ArrayList<TypeDefinition> types;
-
     private CallContext context;
-    private RepoRevision currentRevision;
-    private RandomString randomString;
+    private ReposRepositoryManager manager;
 
-    public ReposCmisService(CmsRepository repository, CmsCommit commit,
-            CmsItemLookup lookup, RepoRevision currentRevision, CallContext context) {
-        this.repository = repository;
-        this.commit = commit;
-        this.lookup = lookup;
-        this.currentRevision = currentRevision;
+    public ReposCmisService(ReposRepositoryManager manager, CallContext context) {
+        this.manager = manager;
         this.context = context;
-
-        // Type definitions.
-        this.types = new ArrayList<TypeDefinition>();
-        DocumentTypeDefinitionImpl docType = new DocumentTypeDefinitionImpl();
-        docType.setBaseTypeId(BaseTypeId.CMIS_DOCUMENT);
-        // TODO Add content stream support?
-        docType.setContentStreamAllowed(ContentStreamAllowed.NOTALLOWED);
-        docType.setDescription("Document");
-        docType.setDisplayName("Document");
-        docType.setExtensions(new ArrayList<CmisExtensionElement>());
-        docType.setId(BaseTypeId.CMIS_DOCUMENT.toString());
-        docType.setIsControllableAcl(false);
-        docType.setIsControllablePolicy(false);
-        docType.setIsCreatable(true);
-        docType.setIsFileable(true);
-        docType.setIsFulltextIndexed(false);
-        docType.setIsIncludedInSupertypeQuery(false);
-        docType.setIsQueryable(false);
-        docType.setIsVersionable(false);
-        docType.setLocalName("Document");
-        docType.setLocalNamespace("");
-        docType.setParentTypeId(BaseTypeId.CMIS_DOCUMENT.toString());
-        docType.setPropertyDefinitions(new HashMap<String, PropertyDefinition<?>>());
-        docType.setQueryName("Document");
-        TypeMutabilityImpl mutable = new TypeMutabilityImpl();
-        mutable.setCanCreate(true);
-        mutable.setCanDelete(true);
-        mutable.setCanUpdate(true);
-        docType.setTypeMutability(mutable);
-        this.types.add(docType);
-
-        FolderTypeDefinitionImpl folder = new FolderTypeDefinitionImpl();
-        folder.setBaseTypeId(BaseTypeId.CMIS_FOLDER);
-        folder.setDescription("Folder");
-        folder.setDisplayName("Folder");
-        folder.setExtensions(new ArrayList<CmisExtensionElement>());
-        folder.setId(BaseTypeId.CMIS_FOLDER.toString());
-        folder.setIsControllableAcl(false);
-        folder.setIsControllablePolicy(false);
-        folder.setIsCreatable(true);
-        folder.setIsFileable(true);
-        folder.setIsFulltextIndexed(false);
-        folder.setIsIncludedInSupertypeQuery(false);
-        folder.setIsQueryable(false);
-        folder.setLocalName("Folder");
-        folder.setLocalNamespace("");
-        folder.setParentTypeId(BaseTypeId.CMIS_FOLDER.toString());
-        folder.setPropertyDefinitions(new HashMap<String, PropertyDefinition<?>>());
-        folder.setQueryName("Folder");
-        folder.setTypeMutability(mutable);
-        this.types.add(folder);
-        this.randomString = new RandomString(15);
-    }
-
-    public void setCurrentRevision(RepoRevision currentRevision) {
-        this.currentRevision = currentRevision;
     }
 
     /**
@@ -161,55 +55,28 @@ public class ReposCmisService extends AbstractCmisService {
 
     @Override
     public List<RepositoryInfo> getRepositoryInfos(ExtensionsData extension) {
-        RepositoryInfoImpl repositoryInfo = new RepositoryInfoImpl();
-        repositoryInfo.setId("repos-cmis");
-        repositoryInfo.setName("Repos CMIS Repository");
-        repositoryInfo.setDescription("CMIS Repository for ReposWeb.");
-        repositoryInfo.setCmisVersionSupported("1.0");
-        repositoryInfo.setProductName("Repos CMIS Repository");
-        repositoryInfo.setProductVersion("1.0");
-        repositoryInfo.setVendorName("Repos Mjukvara AB");
-        repositoryInfo.setRootFolder(this.repository.getPath());
-        repositoryInfo.setThinClientUri("");
-        repositoryInfo.setChangesIncomplete(false);
+        ArrayList<RepositoryInfo> infos = new ArrayList<RepositoryInfo>();
+        for (ReposCmisRepository repo : this.manager.getRepositories()) {
+            infos.add(repo.getRepositoryInfo());
+        }
+        return infos;
+    }
 
-        RepositoryCapabilitiesImpl capabilities = new RepositoryCapabilitiesImpl();
-        capabilities.setCapabilityAcl(CapabilityAcl.NONE);
-        capabilities.setAllVersionsSearchable(false);
-        capabilities.setCapabilityJoin(CapabilityJoin.NONE);
-        capabilities.setSupportsMultifiling(false);
-        capabilities.setSupportsUnfiling(false);
-        capabilities.setSupportsVersionSpecificFiling(false);
-        capabilities.setIsPwcSearchable(false);
-        capabilities.setIsPwcUpdatable(false);
-        capabilities.setCapabilityQuery(CapabilityQuery.NONE);
-        capabilities.setCapabilityChanges(CapabilityChanges.NONE);
-        capabilities
-                .setCapabilityContentStreamUpdates(CapabilityContentStreamUpdates.ANYTIME);
-        capabilities.setSupportsGetDescendants(true);
-        capabilities.setSupportsGetFolderTree(true);
-        capabilities.setCapabilityRendition(CapabilityRenditions.NONE);
-        repositoryInfo.setCapabilities(capabilities);
-
-        return Collections.singletonList((RepositoryInfo) repositoryInfo);
+    private ReposCmisRepository getRepository(String repositoryId) {
+        return this.manager.getRepository(repositoryId);
     }
 
     @Override
     public TypeDefinitionList getTypeChildren(String repositoryId, String typeId,
             Boolean includePropertyDefinitions, BigInteger maxItems,
             BigInteger skipCount, ExtensionsData extension) {
-        return new TypeDefinitionListImpl(this.types);
+        return this.getRepository(repositoryId).getTypes();
     }
 
     @Override
     public TypeDefinition getTypeDefinition(String repositoryId, String typeId,
             ExtensionsData extension) {
-        for (TypeDefinition ty : this.types) {
-            if (ty.getId().equals(typeId)) {
-                return ty;
-            }
-        }
-        return null;
+        return this.getRepository(repositoryId).getType(typeId);
     }
 
     @Override
@@ -218,18 +85,7 @@ public class ReposCmisService extends AbstractCmisService {
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includePathSegment, BigInteger maxItems, BigInteger skipCount,
             ExtensionsData extension) {
-        ObjectInFolderListImpl children = new ObjectInFolderListImpl();
-        CmsItemId itemID = this.getItemId(folderId);
-        CmsItem folder = this.lookup.getItem(itemID);
-        if (folder.getKind() != CmsItemKind.Folder) {
-            return children;
-        }
-        ArrayList<ObjectInFolderData> objectData = new ArrayList<ObjectInFolderData>();
-        for (CmsItem item : this.lookup.getImmediates(itemID)) {
-            objectData.add(new ReposObjectInFolderData(item));
-        }
-        children.setObjects(objectData);
-        return children;
+        return this.getRepository(repositoryId).getChildren(folderId);
     }
 
     @Override
@@ -237,15 +93,7 @@ public class ReposCmisService extends AbstractCmisService {
             String filter, Boolean includeAllowableActions,
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includeRelativePathSegment, ExtensionsData extension) {
-        CmsItemId objectCmsId = this.getItemId(objectId);
-        CmsItem object = this.lookup.getItem(objectCmsId);
-        ArrayList<ObjectParentData> parentData = new ArrayList<ObjectParentData>();
-        for (CmsItemPath parentPath : object.getId().getRelPath().getAncestors()) {
-            CmsItemId parentId = new CmsItemIdUrl(this.repository, parentPath);
-            CmsItem parent = this.lookup.getItem(parentId);
-            parentData.add(new ReposObjectParentData(parent));
-        }
-        return parentData;
+        return this.getRepository(repositoryId).getObjectParents(objectId);
     }
 
     @Override
@@ -253,9 +101,7 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
-        CmsItemId objectCmsId = this.getItemId(objectId);
-        CmsItem object = this.lookup.getItem(objectCmsId);
-        return new ReposObjectData(object);
+        return this.getRepository(repositoryId).getObject(objectId);
     }
 
     @Override
@@ -263,10 +109,7 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, BigInteger depth, String filter,
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
-        CmsItem folder = this.lookup.getItem(this.getItemId(folderId));
-        ObjectInFolderContainer folderContainer = new ReposObjectInFolderContainer(
-                folder, this.lookup);
-        return folderContainer.getChildren();
+        return this.getRepository(repositoryId).getDescendants(folderId, depth, false);
     }
 
     @Override
@@ -274,24 +117,13 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, BigInteger depth, String filter,
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
-        CmsItem folder = this.lookup.getItem(this.getItemId(folderId));
-        ObjectInFolderContainer folderContainer = new ReposObjectInFolderContainer(
-                folder, this.lookup);
-        ArrayList<ObjectInFolderContainer> subFolders = new ArrayList<ObjectInFolderContainer>();
-        for (ObjectInFolderContainer obj : folderContainer.getChildren()) {
-            if (obj.getObject().getObject().getBaseTypeId() == BaseTypeId.CMIS_FOLDER) {
-                subFolders.add(obj);
-            }
-        }
-        return subFolders;
+        return this.getRepository(repositoryId).getDescendants(folderId, depth, true);
     }
 
     @Override
     public ObjectData getFolderParent(String repositoryId, String folderId,
             String filter, ExtensionsData extension) {
-        CmsItemPath parentPath = this.getItemId(folderId).getRelPath().getParent();
-        CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, parentPath));
-        return new ReposObjectData(item);
+        return this.getRepository(repositoryId).getFolderParent(folderId);
     }
 
     @Override
@@ -299,31 +131,15 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, ContentStream contentStream,
             VersioningState versioningState, List<String> policies, Acl addAces,
             Acl removeAces, ExtensionsData extension) {
-        CmsItemId folder = this.getItemId(folderId);
-        // TODO Isn't there a new item name provided?
-        String newItemName = this.randomString.nextString();
-        CmsItemPath newItemPath = folder.getRelPath().append(newItemName);
-        CmsPatchItem fileAdd = new FileAdd(newItemPath, contentStream.getStream());
-        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
-        changes.add(fileAdd);
-        this.commit.run(changes);
-        // TODO Is this the right return value?
-        return newItemName;
+        return this.getRepository(repositoryId).createDocument(folderId, properties,
+                contentStream.getStream());
     }
 
     @Override
     public String createFolder(String repositoryId, Properties properties,
             String folderId, List<String> policies, Acl addAces, Acl removeAces,
             ExtensionsData extension) {
-        CmsItemId parentId = this.getItemId(folderId);
-        // TODO Isn't there a new item name provided?
-        String newFolderName = this.randomString.nextString();
-        CmsItemPath newFolderPath = parentId.getRelPath().append(newFolderName);
-        CmsPatchItem folderAdd = new FolderAdd(newFolderPath);
-        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
-        changes.add(folderAdd);
-        this.commit.run(changes);
-        return newFolderName;
+        return this.getRepository(repositoryId).createFolder(folderId, properties);
     }
 
     @Override
@@ -331,27 +147,20 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
-        return new ReposObjectData(this.lookup.getItem(this.getItemId(path)));
+        return this.getRepository(repositoryId).getObjectByPath(path);
     }
 
     @Override
     public void deleteObjectOrCancelCheckOut(String repositoryId, String objectId,
             Boolean allVersions, ExtensionsData extension) {
-        CmsPatchItem delete = new FileDelete(this.getItemId(objectId).getRelPath());
-        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
-        changes.add(delete);
-        this.commit.run(changes);
+        this.getRepository(repositoryId).deleteObject(objectId);
     }
 
     @Override
     public FailedToDeleteData deleteTree(String repositoryId, String folderId,
             Boolean allVersions, UnfileObject unfileObjects, Boolean continueOnFailure,
             ExtensionsData extension) {
-        CmsPatchItem delete = new FolderDelete(this.getItemId(folderId).getRelPath());
-        CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
-        changes.add(delete);
-        this.commit.run(changes);
-        return new FailedToDeleteDataImpl();
+        return this.getRepository(repositoryId).deleteTree(folderId);
     }
 
     @Override
@@ -368,21 +177,12 @@ public class ReposCmisService extends AbstractCmisService {
     @Override
     public void addObjectToFolder(String repositoryId, String objectId, String folderId,
             Boolean allVersions, ExtensionsData extension) {
-        CmsItemPath objectPath = this.getItemId(objectId).getRelPath();
-        this.moveObject(repositoryId, new Holder<String>(objectId), folderId, objectPath
-                .getParent().getPath(), extension);
+        this.getRepository(repositoryId).moveObject(objectId, folderId);
     }
 
     @Override
     public void removeObjectFromFolder(String repositoryId, String objectId,
             String folderId, ExtensionsData extension) {
-        CmsPatchItem patchItem = new FileDelete(this.getItemId(objectId).getRelPath());
-        CmsPatchset change = new CmsPatchset(this.repository, this.currentRevision);
-        change.add(patchItem);
-        this.commit.run(change);
-    }
-
-    private CmsItemId getItemId(String objectId) {
-        return new CmsItemIdUrl(this.repository, objectId);
+        this.getRepository(repositoryId).deleteObject(objectId);
     }
 }
