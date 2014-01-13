@@ -3,13 +3,14 @@ package se.repos.cmis;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.TimeZone;
 
 import org.apache.chemistry.opencmis.commons.PropertyIds;
 import org.apache.chemistry.opencmis.commons.data.AllowableActions;
-import org.apache.chemistry.opencmis.commons.data.CmisExtensionElement;
 import org.apache.chemistry.opencmis.commons.data.FailedToDeleteData;
 import org.apache.chemistry.opencmis.commons.data.ObjectData;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderContainer;
@@ -20,7 +21,6 @@ import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.PropertyData;
 import org.apache.chemistry.opencmis.commons.data.PropertyString;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
-import org.apache.chemistry.opencmis.commons.definitions.PropertyDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinitionList;
 import org.apache.chemistry.opencmis.commons.enums.Action;
@@ -31,12 +31,13 @@ import org.apache.chemistry.opencmis.commons.enums.CapabilityContentStreamUpdate
 import org.apache.chemistry.opencmis.commons.enums.CapabilityJoin;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityQuery;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityRenditions;
-import org.apache.chemistry.opencmis.commons.enums.ContentStreamAllowed;
+import org.apache.chemistry.opencmis.commons.enums.CmisVersion;
+import org.apache.chemistry.opencmis.commons.exceptions.CmisBaseException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisObjectNotFoundException;
+import org.apache.chemistry.opencmis.commons.exceptions.CmisRuntimeException;
+import org.apache.chemistry.opencmis.commons.impl.MimeTypes;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.AllowableActionsImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.DocumentTypeDefinitionImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.FailedToDeleteDataImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.FolderTypeDefinitionImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectDataImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderContainerImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderDataImpl;
@@ -44,16 +45,16 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderList
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectParentDataImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertiesImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyBooleanImpl;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyDateTimeImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyIdImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyIntegerImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyStringImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryCapabilitiesImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryInfoImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeDefinitionListImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeMutabilityImpl;
-
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
+import org.apache.chemistry.opencmis.commons.impl.server.ObjectInfoImpl;
+import org.apache.chemistry.opencmis.commons.server.CallContext;
+import org.apache.chemistry.opencmis.commons.server.ObjectInfoHandler;
 
 import se.simonsoft.cms.item.CmsItem;
 import se.simonsoft.cms.item.CmsItemId;
@@ -71,17 +72,22 @@ import se.simonsoft.cms.item.commit.FolderDelete;
 import se.simonsoft.cms.item.impl.CmsItemIdUrl;
 import se.simonsoft.cms.item.info.CmsItemLookup;
 
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
+
 public class ReposCmisRepository {
+    private static final String USER_UNKNOWN = "<unknown>";
     private final String repositoryId;
     private final CmsRepository repository;
     private final CmsCommit commit;
     private final CmsItemLookup lookup;
     private final RepoRevision currentRevision;
-    private final ArrayList<TypeDefinition> types;
+    private ReposTypeManager typeManager;
 
     @Inject
-    public ReposCmisRepository(@Named("repositoryId") String repositoryId, CmsRepository repository,
-            CmsCommit commit, CmsItemLookup lookup, RepoRevision currentRevision) {
+    public ReposCmisRepository(@Named("repositoryId") String repositoryId,
+            CmsRepository repository, CmsCommit commit, CmsItemLookup lookup,
+            RepoRevision currentRevision) {
         if (repositoryId == null || repository == null || commit == null
                 || lookup == null || currentRevision == null) {
             throw new NullPointerException();
@@ -91,57 +97,7 @@ public class ReposCmisRepository {
         this.commit = commit;
         this.lookup = lookup;
         this.currentRevision = currentRevision;
-
-        // Type definitions.
-        this.types = new ArrayList<TypeDefinition>();
-        DocumentTypeDefinitionImpl docType = new DocumentTypeDefinitionImpl();
-        docType.setBaseTypeId(BaseTypeId.CMIS_DOCUMENT);
-        // TODO Add content stream support?
-        docType.setContentStreamAllowed(ContentStreamAllowed.NOTALLOWED);
-        docType.setDescription("Document");
-        docType.setDisplayName("Document");
-        docType.setExtensions(new ArrayList<CmisExtensionElement>());
-        docType.setId(BaseTypeId.CMIS_DOCUMENT.toString());
-        docType.setIsControllableAcl(false);
-        docType.setIsControllablePolicy(false);
-        docType.setIsCreatable(true);
-        docType.setIsFileable(true);
-        docType.setIsFulltextIndexed(false);
-        docType.setIsIncludedInSupertypeQuery(false);
-        docType.setIsQueryable(false);
-        docType.setIsVersionable(false);
-        docType.setLocalName("Document");
-        docType.setLocalNamespace("");
-        docType.setParentTypeId(BaseTypeId.CMIS_DOCUMENT.value());
-        docType.setPropertyDefinitions(new HashMap<String, PropertyDefinition<?>>());
-        docType.setQueryName("Document");
-        TypeMutabilityImpl mutable = new TypeMutabilityImpl();
-        mutable.setCanCreate(true);
-        mutable.setCanDelete(true);
-        mutable.setCanUpdate(true);
-        docType.setTypeMutability(mutable);
-        this.types.add(docType);
-
-        FolderTypeDefinitionImpl folder = new FolderTypeDefinitionImpl();
-        folder.setBaseTypeId(BaseTypeId.CMIS_FOLDER);
-        folder.setDescription("Folder");
-        folder.setDisplayName("Folder");
-        folder.setExtensions(new ArrayList<CmisExtensionElement>());
-        folder.setId(BaseTypeId.CMIS_FOLDER.value());
-        folder.setIsControllableAcl(false);
-        folder.setIsControllablePolicy(false);
-        folder.setIsCreatable(true);
-        folder.setIsFileable(true);
-        folder.setIsFulltextIndexed(false);
-        folder.setIsIncludedInSupertypeQuery(false);
-        folder.setIsQueryable(false);
-        folder.setLocalName("Folder");
-        folder.setLocalNamespace("");
-        folder.setParentTypeId(BaseTypeId.CMIS_FOLDER.toString());
-        folder.setPropertyDefinitions(new HashMap<String, PropertyDefinition<?>>());
-        folder.setQueryName("Folder");
-        folder.setTypeMutability(mutable);
-        this.types.add(folder);
+        this.typeManager = new ReposTypeManager();
     }
 
     public String getRepositoryId() {
@@ -200,19 +156,22 @@ public class ReposCmisRepository {
     }
 
     public TypeDefinitionList getTypes() {
-        return new TypeDefinitionListImpl(this.types);
+        List<TypeDefinition> types = this.typeManager.getInternalTypeDefinitions();
+        TypeDefinitionListImpl typeDefs = new TypeDefinitionListImpl();
+        typeDefs.setList(types);
+        return typeDefs;
     }
 
     public TypeDefinition getType(String typeId) {
-        for (TypeDefinition ty : this.types) {
-            if (ty.getId().equals(typeId)) {
-                return ty;
-            }
+        TypeDefinition ty = this.typeManager.getInternalTypeDefinition(typeId);
+        if (ty == null) {
+            throw new CmisObjectNotFoundException("Type " + typeId + " is not defined!");
         }
-        throw new CmisObjectNotFoundException("Unknown type: " + typeId);
+        return ty;
     }
 
-    public ObjectInFolderList getChildren(String folderId) {
+    public ObjectInFolderList getChildren(CallContext context, String folderId,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         ObjectInFolderListImpl children = new ObjectInFolderListImpl();
         CmsItemId itemID = this.getItemId(folderId);
         CmsItem folder = this.lookup.getItem(itemID);
@@ -221,45 +180,51 @@ public class ReposCmisRepository {
         }
         ArrayList<ObjectInFolderData> objectData = new ArrayList<ObjectInFolderData>();
         for (CmsItem item : this.lookup.getImmediates(itemID)) {
-            objectData.add(this.compileObjectData(item));
+            objectData.add(this.compileObjectData(context, item, orgFilter, objectInfos));
         }
         children.setObjects(objectData);
         return children;
     }
 
-    public List<ObjectInFolderContainer> getDescendants(String folderId,
-            BigInteger depth, boolean foldersOnly) {
+    public List<ObjectInFolderContainer> getDescendants(CallContext context,
+            String folderId, BigInteger depth, boolean foldersOnly,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         ArrayList<ObjectInFolderContainer> objects = new ArrayList<ObjectInFolderContainer>();
         for (CmsItemId item : this.lookup.getDescendants(this.getItemId(folderId))) {
-            objects.add(this.compileObjectContainer(this.lookup.getItem(item)));
+            objects.add(this.compileObjectContainer(context, this.lookup.getItem(item),
+                    orgFilter, objectInfos));
             // TODO Recurse on depth.
             // TODO Check foldersOnly.
         }
         return objects;
     }
 
-    public List<ObjectParentData> getObjectParents(String objectId) {
+    public List<ObjectParentData> getObjectParents(CallContext context, String objectId,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         CmsItemId objectCmsId = this.getItemId(objectId);
         CmsItem object = this.lookup.getItem(objectCmsId);
         ArrayList<ObjectParentData> parentData = new ArrayList<ObjectParentData>();
         for (CmsItemPath parentPath : object.getId().getRelPath().getAncestors()) {
             CmsItemId parentId = new CmsItemIdUrl(this.repository, parentPath);
             CmsItem parent = this.lookup.getItem(parentId);
-            parentData.add(this.compileParentData(parent));
+            parentData.add(this
+                    .compileParentData(context, parent, orgFilter, objectInfos));
         }
         return parentData;
     }
 
-    public ObjectData getObject(String objectId) {
+    public ObjectData getObject(CallContext context, String objectId,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         CmsItemId objectCmsId = this.getItemId(objectId);
-        CmsItem object = this.lookup.getItem(objectCmsId);
-        return this.compileObject(object);
+        CmsItem item = this.lookup.getItem(objectCmsId);
+        return this.compileObject(context, item, orgFilter, objectInfos);
     }
 
-    public ObjectData getFolderParent(String folderId) {
+    public ObjectData getFolderParent(CallContext context, String folderId,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         CmsItemPath parentPath = this.getItemId(folderId).getRelPath().getParent();
         CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, parentPath));
-        return this.compileObject(item);
+        return this.compileObject(context, item, orgFilter, objectInfos);
     }
 
     public String createDocument(String folderId, Properties properties,
@@ -285,105 +250,313 @@ public class ReposCmisRepository {
         return newFolderPath.getPath();
     }
 
-    public ObjectData getObjectByPath(String path) {
+    public ObjectData getObjectByPath(CallContext context, String path,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         CmsItem item = this.lookup.getItem(this.getItemId(path));
-        return this.compileObject(item);
+        return this.compileObject(context, item, orgFilter, objectInfos);
     }
 
-    private ObjectParentData compileParentData(CmsItem item) {
+    private ObjectParentData compileParentData(CallContext context, CmsItem item,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         ObjectParentDataImpl parentData = new ObjectParentDataImpl();
-        parentData.setObject(this.compileObject(item));
+        parentData.setObject(this.compileObject(context, item, orgFilter, objectInfos));
         return parentData;
     }
 
-    private ObjectInFolderContainer compileObjectContainer(CmsItem item) {
-        ObjectInFolderData objectData = this.compileObjectData(item);
+    private ObjectInFolderContainer compileObjectContainer(CallContext context,
+            CmsItem item, Set<String> orgFilter, ObjectInfoHandler objectInfos) {
+        ObjectInFolderData objectData = this.compileObjectData(context, item, orgFilter,
+                objectInfos);
         ObjectInFolderContainerImpl container = new ObjectInFolderContainerImpl();
         container.setObject(objectData);
         return container;
     }
 
-    private ObjectInFolderData compileObjectData(CmsItem item) {
-        ObjectData object = this.compileObject(item);
+    private ObjectInFolderData compileObjectData(CallContext context, CmsItem item,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
+        ObjectData object = this.compileObject(context, item, orgFilter, objectInfos);
         ObjectInFolderDataImpl objectData = new ObjectInFolderDataImpl();
         objectData.setObject(object);
         return objectData;
     }
 
-    private ObjectData compileObject(CmsItem item) {
+    private ObjectData compileObject(CallContext context, CmsItem item,
+            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         ObjectDataImpl object = new ObjectDataImpl();
-        object.setProperties(this.compileProperties(item));
+        ObjectInfoImpl objectInfo = new ObjectInfoImpl();
+        object.setProperties(this.compileProperties(context, item, orgFilter, objectInfo));
         object.setAllowableActions(this.compileAllowableActions(item));
+        objectInfo.setObject(object);
+        objectInfos.addObjectInfo(objectInfo);
         return object;
     }
 
-    private Properties compileProperties(CmsItem item) {
-        PropertiesImpl properties = new PropertiesImpl();
-        properties.addProperty(new PropertyStringImpl(PropertyIds.NAME, item.getId()
-                .getRelPath().getName()));
-        properties.addProperty(new PropertyStringImpl(PropertyIds.OBJECT_ID, item.getId()
-                .getRelPath().getPath()));
-        properties.addProperty(new PropertyIdImpl(PropertyIds.OBJECT_TYPE_ID, this
-                .getBaseTypeId(item).value()));
-        properties.addProperty(new PropertyIdImpl(PropertyIds.BASE_TYPE_ID, this
-                .getBaseTypeId(item).value()));
-        // TODO Return author of first version instead of latest version.
-        // Needs support in CmsItem for getting original author.
-        properties.addProperty(new PropertyStringImpl(PropertyIds.CREATED_BY, item
-                .getRevisionChangedAuthor()));
-        properties.addProperty(new PropertyIntegerImpl(PropertyIds.CREATION_DATE,
-                BigInteger.valueOf(item.getRevisionChanged().getDate().getTime())));
-        properties.addProperty(new PropertyStringImpl(PropertyIds.LAST_MODIFIED_BY, item
-                .getRevisionChangedAuthor()));
-        properties.addProperty(new PropertyIntegerImpl(
-                PropertyIds.LAST_MODIFICATION_DATE, BigInteger.valueOf(item
-                        .getRevisionChanged().getDate().getTime())));
-        if (this.getBaseTypeId(item) == BaseTypeId.CMIS_DOCUMENT) {
-            properties.addProperty(new PropertyBooleanImpl(PropertyIds.IS_IMMUTABLE,
-                    false));
-            properties.addProperty(new PropertyBooleanImpl(PropertyIds.IS_LATEST_VERSION,
-                    true));
-            properties.addProperty(new PropertyBooleanImpl(PropertyIds.IS_MAJOR_VERSION,
-                    true));
-            properties.addProperty(new PropertyBooleanImpl(
-                    PropertyIds.IS_LATEST_MAJOR_VERSION, true));
-            properties.addProperty(new PropertyStringImpl(PropertyIds.VERSION_LABEL, ""));
-            properties.addProperty(new PropertyStringImpl(PropertyIds.VERSION_SERIES_ID,
-                    ""));
-            properties.addProperty(new PropertyBooleanImpl(
-                    PropertyIds.IS_VERSION_SERIES_CHECKED_OUT, false));
-            // TODO Support content stream properties.
-            // properties.addProperty(new PropertyStringImpl(
-            // PropertyIds.VERSION_SERIES_CHECKED_OUT_BY, ""));
-            // properties.addProperty(new PropertyStringImpl(
-            // PropertyIds.VERSION_SERIES_CHECKED_OUT_ID, ""));
-            // properties
-            // .addProperty(new PropertyStringImpl(PropertyIds.CHECKIN_COMMENT,
-            // ""));
-            // properties.addProperty(new PropertyIntegerImpl(
-            // PropertyIds.CONTENT_STREAM_LENGTH, BigInteger.valueOf(1234)));
-            // properties.addProperty(new PropertyIntegerImpl(
-            // PropertyIds.CONTENT_STREAM_LENGTH, BigInteger.valueOf(1234)));
-            // properties.addProperty(new PropertyStringImpl(
-            // PropertyIds.CONTENT_STREAM_MIME_TYPE, ""));
-            // properties.addProperty(new PropertyStringImpl(
-            // PropertyIds.CONTENT_STREAM_FILE_NAME, ""));
-            // properties.addProperty(new
-            // PropertyIdImpl(PropertyIds.CONTENT_STREAM_ID, ""));
+    /**
+     * Gathers all base properties of a file or folder.
+     */
+    private Properties compileProperties(CallContext context, CmsItem item,
+            Set<String> orgfilter, ObjectInfoImpl objectInfo) {
+        if (item == null) {
+            throw new NullPointerException("Item is null.");
         }
-        if (this.getBaseTypeId(item) == BaseTypeId.CMIS_FOLDER) {
-            CmsItemPath itemPath = item.getId().getRelPath();
-            properties.addProperty(new PropertyIdImpl(PropertyIds.PARENT_ID, itemPath
-                    .getParent().getPath()));
-            ArrayList<String> allowedIds = new ArrayList<String>();
-            allowedIds.add(BaseTypeId.CMIS_DOCUMENT.value());
-            allowedIds.add(BaseTypeId.CMIS_FOLDER.value());
-            properties.addProperty(new PropertyIdImpl(
-                    PropertyIds.ALLOWED_CHILD_OBJECT_TYPE_IDS, allowedIds));
-            properties.addProperty(new PropertyStringImpl(PropertyIds.PATH, itemPath
-                    .getPath()));
+
+        Set<String> filter = (orgfilter == null ? null : new HashSet<String>(orgfilter));
+        String typeId = this.getBaseTypeId(item).value();
+        CmsItemPath itemPath = item.getId().getRelPath();
+
+        if (item.getKind() == CmsItemKind.Folder) {
+            typeId = BaseTypeId.CMIS_FOLDER.value();
+            objectInfo.setBaseType(BaseTypeId.CMIS_FOLDER);
+            objectInfo.setTypeId(typeId);
+            objectInfo.setContentType(null);
+            objectInfo.setFileName(null);
+            objectInfo.setHasAcl(true);
+            objectInfo.setHasContent(false);
+            objectInfo.setVersionSeriesId(null);
+            objectInfo.setIsCurrentVersion(true);
+            objectInfo.setRelationshipSourceIds(null);
+            objectInfo.setRelationshipTargetIds(null);
+            objectInfo.setRenditionInfos(null);
+            objectInfo.setSupportsDescendants(true);
+            objectInfo.setSupportsFolderTree(true);
+            objectInfo.setSupportsPolicies(false);
+            objectInfo.setSupportsRelationships(false);
+            objectInfo.setWorkingCopyId(null);
+            objectInfo.setWorkingCopyOriginalId(null);
+        } else {
+            typeId = BaseTypeId.CMIS_DOCUMENT.value();
+            objectInfo.setBaseType(BaseTypeId.CMIS_DOCUMENT);
+            objectInfo.setTypeId(typeId);
+            objectInfo.setHasAcl(true);
+            objectInfo.setHasContent(true);
+            objectInfo.setHasParent(true);
+            objectInfo.setVersionSeriesId(null);
+            objectInfo.setIsCurrentVersion(true);
+            objectInfo.setRelationshipSourceIds(null);
+            objectInfo.setRelationshipTargetIds(null);
+            objectInfo.setRenditionInfos(null);
+            objectInfo.setSupportsDescendants(false);
+            objectInfo.setSupportsFolderTree(false);
+            objectInfo.setSupportsPolicies(false);
+            objectInfo.setSupportsRelationships(false);
+            objectInfo.setWorkingCopyId(null);
+            objectInfo.setWorkingCopyOriginalId(null);
         }
-        return properties;
+
+        // let's do it
+        try {
+            PropertiesImpl result = new PropertiesImpl();
+
+            // id
+            String id = itemPath.getPath();
+            this.addPropertyId(result, typeId, filter, PropertyIds.OBJECT_ID, id);
+            objectInfo.setId(id);
+
+            // name
+            String name = item.getId().getRelPath().getName();
+            this.addPropertyString(result, typeId, filter, PropertyIds.NAME, name);
+            objectInfo.setName(name);
+
+            // created and modified by
+            this.addPropertyString(result, typeId, filter, PropertyIds.CREATED_BY,
+                    USER_UNKNOWN);
+            this.addPropertyString(result, typeId, filter, PropertyIds.LAST_MODIFIED_BY,
+                    USER_UNKNOWN);
+            objectInfo.setCreatedBy(USER_UNKNOWN);
+
+            // creation and modification date
+            GregorianCalendar lastModified = ReposCmisRepository.millisToCalendar(item
+                    .getRevisionChanged().getDate().getTime());
+            this.addPropertyDateTime(result, typeId, filter, PropertyIds.CREATION_DATE,
+                    lastModified);
+            this.addPropertyDateTime(result, typeId, filter,
+                    PropertyIds.LAST_MODIFICATION_DATE, lastModified);
+            objectInfo.setCreationDate(lastModified);
+            objectInfo.setLastModificationDate(lastModified);
+
+            // change token - always null
+            this.addPropertyString(result, typeId, filter, PropertyIds.CHANGE_TOKEN, null);
+
+            // directory or file
+            if (item.getKind() == CmsItemKind.Folder) {
+                // base type and type name
+                this.addPropertyId(result, typeId, filter, PropertyIds.BASE_TYPE_ID,
+                        BaseTypeId.CMIS_FOLDER.value());
+                this.addPropertyId(result, typeId, filter, PropertyIds.OBJECT_TYPE_ID,
+                        BaseTypeId.CMIS_FOLDER.value());
+                this.addPropertyString(result, typeId, filter, PropertyIds.PATH,
+                        itemPath.getPath());
+
+                // folder properties
+                if (!this.repository.getPath().equals(itemPath.getPath())) {
+                    this.addPropertyId(result, typeId, filter, PropertyIds.PARENT_ID,
+                            itemPath.getParent().getPath());
+                    objectInfo.setHasParent(true);
+                } else {
+                    this.addPropertyId(result, typeId, filter, PropertyIds.PARENT_ID,
+                            null);
+                    objectInfo.setHasParent(false);
+                }
+
+                this.addPropertyIdList(result, typeId, filter,
+                        PropertyIds.ALLOWED_CHILD_OBJECT_TYPE_IDS, null);
+            } else {
+                // base type and type name
+                this.addPropertyId(result, typeId, filter, PropertyIds.BASE_TYPE_ID,
+                        BaseTypeId.CMIS_DOCUMENT.value());
+                this.addPropertyId(result, typeId, filter, PropertyIds.OBJECT_TYPE_ID,
+                        BaseTypeId.CMIS_DOCUMENT.value());
+
+                // file properties
+                this.addPropertyBoolean(result, typeId, filter, PropertyIds.IS_IMMUTABLE,
+                        false);
+                this.addPropertyBoolean(result, typeId, filter,
+                        PropertyIds.IS_LATEST_VERSION, true);
+                this.addPropertyBoolean(result, typeId, filter,
+                        PropertyIds.IS_MAJOR_VERSION, true);
+                this.addPropertyBoolean(result, typeId, filter,
+                        PropertyIds.IS_LATEST_MAJOR_VERSION, true);
+                this.addPropertyString(result, typeId, filter, PropertyIds.VERSION_LABEL,
+                        itemPath.getPath());
+                this.addPropertyId(result, typeId, filter, PropertyIds.VERSION_SERIES_ID,
+                        itemPath.getPath());
+                this.addPropertyBoolean(result, typeId, filter,
+                        PropertyIds.IS_VERSION_SERIES_CHECKED_OUT, false);
+                this.addPropertyString(result, typeId, filter,
+                        PropertyIds.VERSION_SERIES_CHECKED_OUT_BY, null);
+                this.addPropertyString(result, typeId, filter,
+                        PropertyIds.VERSION_SERIES_CHECKED_OUT_ID, null);
+                this.addPropertyString(result, typeId, filter,
+                        PropertyIds.CHECKIN_COMMENT, "");
+                if (context.getCmisVersion() != CmisVersion.CMIS_1_0) {
+                    this.addPropertyBoolean(result, typeId, filter,
+                            PropertyIds.IS_PRIVATE_WORKING_COPY, false);
+                }
+
+                if (item.getFilesize() == 0) {
+                    this.addPropertyBigInteger(result, typeId, filter,
+                            PropertyIds.CONTENT_STREAM_LENGTH, null);
+                    this.addPropertyString(result, typeId, filter,
+                            PropertyIds.CONTENT_STREAM_MIME_TYPE, null);
+                    this.addPropertyString(result, typeId, filter,
+                            PropertyIds.CONTENT_STREAM_FILE_NAME, null);
+
+                    objectInfo.setHasContent(false);
+                    objectInfo.setContentType(null);
+                    objectInfo.setFileName(null);
+                } else {
+                    this.addPropertyInteger(result, typeId, filter,
+                            PropertyIds.CONTENT_STREAM_LENGTH, item.getFilesize());
+                    this.addPropertyString(result, typeId, filter,
+                            PropertyIds.CONTENT_STREAM_MIME_TYPE,
+                            MimeTypes.getMIMEType(itemPath.getName()));
+                    this.addPropertyString(result, typeId, filter,
+                            PropertyIds.CONTENT_STREAM_FILE_NAME, itemPath.getName());
+
+                    objectInfo.setHasContent(true);
+                    objectInfo.setContentType(MimeTypes.getMIMEType(itemPath.getName()));
+                    objectInfo.setFileName(itemPath.getName());
+                }
+
+                this.addPropertyId(result, typeId, filter, PropertyIds.CONTENT_STREAM_ID,
+                        null);
+            }
+
+            return result;
+        } catch (CmisBaseException cbe) {
+            throw cbe;
+        } catch (Exception e) {
+            throw new CmisRuntimeException(e.getMessage(), e);
+        }
+    }
+
+    private void addPropertyId(PropertiesImpl props, String typeId, Set<String> filter,
+            String id, String value) {
+        if (!this.checkAddProperty(props, typeId, filter, id)) {
+            return;
+        }
+
+        props.addProperty(new PropertyIdImpl(id, value));
+    }
+
+    private void addPropertyIdList(PropertiesImpl props, String typeId,
+            Set<String> filter, String id, List<String> value) {
+        if (!this.checkAddProperty(props, typeId, filter, id)) {
+            return;
+        }
+
+        props.addProperty(new PropertyIdImpl(id, value));
+    }
+
+    private void addPropertyString(PropertiesImpl props, String typeId,
+            Set<String> filter, String id, String value) {
+        if (!this.checkAddProperty(props, typeId, filter, id)) {
+            return;
+        }
+
+        props.addProperty(new PropertyStringImpl(id, value));
+    }
+
+    private void addPropertyInteger(PropertiesImpl props, String typeId,
+            Set<String> filter, String id, long value) {
+        this.addPropertyBigInteger(props, typeId, filter, id, BigInteger.valueOf(value));
+    }
+
+    private void addPropertyBigInteger(PropertiesImpl props, String typeId,
+            Set<String> filter, String id, BigInteger value) {
+        if (!this.checkAddProperty(props, typeId, filter, id)) {
+            return;
+        }
+
+        props.addProperty(new PropertyIntegerImpl(id, value));
+    }
+
+    private void addPropertyBoolean(PropertiesImpl props, String typeId,
+            Set<String> filter, String id, boolean value) {
+        if (!this.checkAddProperty(props, typeId, filter, id)) {
+            return;
+        }
+
+        props.addProperty(new PropertyBooleanImpl(id, value));
+    }
+
+    private void addPropertyDateTime(PropertiesImpl props, String typeId,
+            Set<String> filter, String id, GregorianCalendar value) {
+        if (!this.checkAddProperty(props, typeId, filter, id)) {
+            return;
+        }
+
+        props.addProperty(new PropertyDateTimeImpl(id, value));
+    }
+
+    private boolean checkAddProperty(Properties properties, String typeId,
+            Set<String> filter, String id) {
+        if ((properties == null) || (properties.getProperties() == null)) {
+            throw new IllegalArgumentException("Properties must not be null!");
+        }
+
+        if (id == null) {
+            throw new IllegalArgumentException("Id must not be null!");
+        }
+
+        TypeDefinition type = this.typeManager.getInternalTypeDefinition(typeId);
+        if (type == null) {
+            throw new IllegalArgumentException("Unknown type: " + typeId);
+        }
+        if (!type.getPropertyDefinitions().containsKey(id)) {
+            throw new IllegalArgumentException("Unknown property: " + id);
+        }
+
+        String queryName = type.getPropertyDefinitions().get(id).getQueryName();
+
+        if ((queryName != null) && (filter != null)) {
+            if (!filter.contains(queryName)) {
+                return false;
+            }
+            filter.remove(queryName);
+        }
+
+        return true;
     }
 
     private AllowableActions compileAllowableActions(CmsItem item) {
@@ -413,6 +586,14 @@ public class ReposCmisRepository {
         AllowableActionsImpl actions = new AllowableActionsImpl();
         actions.setAllowableActions(actionSet);
         return actions;
+    }
+
+    private static GregorianCalendar millisToCalendar(long millis) {
+        GregorianCalendar result = new GregorianCalendar();
+        result.setTimeZone(TimeZone.getTimeZone("GMT"));
+        result.setTimeInMillis((long) (Math.ceil((double) millis / 1000) * 1000));
+
+        return result;
     }
 
     public void deleteObject(String objectId) {
