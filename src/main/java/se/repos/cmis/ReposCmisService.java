@@ -27,6 +27,7 @@ import org.apache.chemistry.opencmis.commons.enums.UnfileObject;
 import org.apache.chemistry.opencmis.commons.enums.VersioningState;
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractCmisService;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
+import org.apache.chemistry.opencmis.commons.spi.Holder;
 
 /**
  * CMIS Service Implementation.
@@ -194,6 +195,36 @@ public class ReposCmisService extends AbstractCmisService {
     public void removeObjectFromFolder(String repositoryId, String objectId,
             String folderId, ExtensionsData extension) {
         this.getRepository(repositoryId).deleteObject(objectId);
+    }
+
+    @Override
+    public ContentStream getContentStream(String repositoryId, String objectId,
+            String streamId, BigInteger offset, BigInteger length,
+            ExtensionsData extension) {
+        return this.getRepository(repositoryId).getContentStream(objectId, streamId,
+                offset, length);
+    }
+
+    @Override
+    public void setContentStream(String repositoryId, Holder<String> objectId,
+            Boolean overwriteFlag, Holder<String> changeToken,
+            ContentStream contentStream, ExtensionsData extension) {
+        this.getRepository(repositoryId).setContentStream(objectId, overwriteFlag,
+                contentStream);
+    }
+
+    @Override
+    public void appendContentStream(String repositoryId, Holder<String> objectId,
+            Holder<String> changeToken, ContentStream contentStream, boolean isLastChunk,
+            ExtensionsData extension) {
+        this.getRepository(repositoryId).appendContentStream(objectId, contentStream,
+                isLastChunk);
+    }
+
+    @Override
+    public void deleteContentStream(String repositoryId, Holder<String> objectId,
+            Holder<String> changeToken, ExtensionsData extension) {
+        this.getRepository(repositoryId).deleteContentStream(objectId);
     }
 
     private Set<String> splitFilter(String filter) {
