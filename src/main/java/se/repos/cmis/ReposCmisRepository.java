@@ -7,6 +7,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
@@ -35,6 +36,7 @@ import org.apache.chemistry.opencmis.commons.enums.CapabilityAcl;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityChanges;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityContentStreamUpdates;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityJoin;
+import org.apache.chemistry.opencmis.commons.enums.CapabilityOrderBy;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityQuery;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityRenditions;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisObjectNotFoundException;
@@ -114,20 +116,22 @@ public class ReposCmisRepository {
         return this.repositoryId;
     }
 
-    private CmsItemId getItemId(String objectId) {
-        return new CmsItemIdUrl(this.repository, objectId);
+    private CmsItemPath cmisPathToReposPath(String objectId) {
+        if (objectId == "/") {
+            return this.repoPath;
+        }
+        return this.repoPath.append(new CmsItemPath(objectId).getPathSegments());
     }
 
-    private CmsItemPath getRepoRelativePath(CmsItem item) {
-        CmsItemPath itemPath = item.getId().getRelPath();
-        if (itemPath.equals(this.repoPath)) {
-            return null;
+    private String reposPathToCmisPath(CmsItemPath path) {
+        if (path.equals(this.repoPath)) {
+            return "/";
         }
-        if (!this.repoPath.isAncestorOf(itemPath)) {
-            return itemPath;
+        if (!this.repoPath.isAncestorOf(path)) {
+            return path.getPath();
         }
         int segmentsToTrim = this.repoPath.getPathSegmentsCount();
-        List<String> pathSegments = itemPath.getPathSegments();
+        List<String> pathSegments = path.getPathSegments();
         StringBuilder newPathBuilder = new StringBuilder();
         for (String pathSegment : pathSegments.subList(segmentsToTrim,
                 pathSegments.size())) {
@@ -135,7 +139,7 @@ public class ReposCmisRepository {
             newPathBuilder.append(pathSegment);
         }
         String newPathString = newPathBuilder.toString();
-        return new CmsItemPath(newPathString);
+        return new CmsItemPath(newPathString).getPath();
     }
 
     private BaseTypeId getBaseTypeId(CmsItem item) {
@@ -180,6 +184,7 @@ public class ReposCmisRepository {
         capabilities.setSupportsGetDescendants(true);
         capabilities.setSupportsGetFolderTree(true);
         capabilities.setCapabilityRendition(CapabilityRenditions.NONE);
+        capabilities.setOrderByCapability(CapabilityOrderBy.NONE);
         repositoryInfo.setCapabilities(capabilities);
 
         return repositoryInfo;
@@ -203,7 +208,7 @@ public class ReposCmisRepository {
     public ObjectInFolderList getChildren(CallContext context, String folderId,
             Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         ObjectInFolderListImpl children = new ObjectInFolderListImpl();
-        CmsItemId itemID = this.getItemId(folderId);
+        CmsItemId itemID = new CmsItemIdUrl(this.repository, folderId);
         CmsItem folder = this.lookup.getItem(itemID);
         if (folder.getKind() != CmsItemKind.Folder) {
             return children;
@@ -221,7 +226,8 @@ public class ReposCmisRepository {
             String folderId, BigInteger depth, boolean foldersOnly,
             Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         ArrayList<ObjectInFolderContainer> objects = new ArrayList<ObjectInFolderContainer>();
-        for (CmsItemId item : this.lookup.getDescendants(this.getItemId(folderId))) {
+        for (CmsItemId item : this.lookup.getDescendants(new CmsItemIdUrl(
+                this.repository, folderId))) {
             objects.add(this.compileObjectContainer(context, this.lookup.getItem(item),
                     orgFilter, objectInfos));
             // TODO Recurse on depth.
@@ -232,72 +238,55 @@ public class ReposCmisRepository {
 
     public List<ObjectParentData> getObjectParents(CallContext context, String objectId,
             Set<String> orgFilter, ObjectInfoHandler objectInfos) {
-        // TODO Include repository root in parents list.
-        // TODO If the requested object IS the root, return an empty list.
-        CmsItem item = this.lookup.getItem(this.getItemId(objectId));
-        CmsItemPath relativePath = this.getRepoRelativePath(item);
-        ArrayList<ObjectParentData> parentData = new ArrayList<ObjectParentData>();
-        for (CmsItemPath parentPath : relativePath.getAncestors()) {
-            CmsItemId parentId = new CmsItemIdUrl(this.repository,
-                    this.repoPath.append(parentPath.getPathSegments()));
-            CmsItem parent = this.lookup.getItem(parentId);
-            parentData.add(this
-                    .compileParentData(context, parent, orgFilter, objectInfos));
+        CmsItemPath itemPath = new CmsItemPath(objectId);
+        if (itemPath.getPath().equals(this.repository.getPath())) {
+            // The folder is the root, and has no parents.
+            return Collections.emptyList();
         }
-        return parentData;
+        this.lookup.getItem(new CmsItemIdUrl(this.repository, itemPath));
+
+        CmsItem parent = this.lookup.getItem(new CmsItemIdUrl(this.repository, itemPath
+                .getParent()));
+        ObjectParentDataImpl parentData = new ObjectParentDataImpl();
+        parentData.setObject(this.compileObject(context, parent, orgFilter, objectInfos));
+        parentData.setRelativePathSegment(itemPath.getName());
+        return Collections.<ObjectParentData> singletonList(parentData);
     }
 
     public ObjectData getObject(CallContext context, String objectId,
             Set<String> orgFilter, ObjectInfoHandler objectInfos) {
-        CmsItemId objectCmsId = this.getItemId(objectId);
+        CmsItemId objectCmsId = new CmsItemIdUrl(this.repository, objectId);
         CmsItem item = this.lookup.getItem(objectCmsId);
         return this.compileObject(context, item, orgFilter, objectInfos);
     }
 
     public ObjectData getFolderParent(CallContext context, String folderId,
             Set<String> orgFilter, ObjectInfoHandler objectInfos) {
-        CmsItemPath parentPath = this.getItemId(folderId).getRelPath().getParent();
-        CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, parentPath));
-        return this.compileObject(context, item, orgFilter, objectInfos);
+        return this.getObjectParents(context, folderId, orgFilter, objectInfos).get(0)
+                .getObject();
     }
 
     public String createDocument(String folderId, Properties properties,
             InputStream inputStream) {
-        CmsItemId folder = this.getItemId(folderId);
         String newItemName = this.getStringProperty(properties, PropertyIds.NAME);
-        CmsItemPath newItemPath = folder.getRelPath().append(newItemName);
+        CmsItemPath newItemPath = new CmsItemPath(folderId).append(newItemName);
         this.runChange(new FileAdd(newItemPath, inputStream));
         return newItemPath.getPath();
     }
 
     public String createFolder(String folderId, Properties properties) {
-        CmsItemId parentId = this.getItemId(folderId);
         String newFolderName = this.getStringProperty(properties, PropertyIds.NAME);
-        CmsItemPath newFolderPath = parentId.getRelPath().append(newFolderName);
+        CmsItemPath newFolderPath = new CmsItemPath(folderId).append(newFolderName);
         this.runChange(new FolderAdd(newFolderPath));
         return newFolderPath.getPath();
     }
 
     public ObjectData getObjectByPath(CallContext context, String path,
             Set<String> orgFilter, ObjectInfoHandler objectInfos) {
-        CmsItemId itemId;
-        if (path == "/") {
-            // return the root folder
-            itemId = this.repository.getItemId();
-        } else {
-            CmsItemPath itemPath = this.repoPath.append(new CmsItemPath(path)
-                    .getPathSegments());
-            itemId = new CmsItemIdUrl(this.repository, itemPath);
-        }
+        CmsItemPath itemPath = this.cmisPathToReposPath(path);
+        CmsItemId itemId = new CmsItemIdUrl(this.repository, itemPath);
         CmsItem item = this.lookup.getItem(itemId);
         return this.compileObject(context, item, orgFilter, objectInfos);
-    }
-
-    private ObjectParentData compileParentData(CallContext context, CmsItem item,
-            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
-        ObjectParentDataImpl parentData = new ObjectParentDataImpl();
-        parentData.setObject(this.compileObject(context, item, orgFilter, objectInfos));
-        return parentData;
     }
 
     private ObjectInFolderContainer compileObjectContainer(CallContext context,
@@ -421,13 +410,11 @@ public class ReposCmisRepository {
                     BaseTypeId.CMIS_FOLDER.value());
 
             // item path (relative to repository root)
-            CmsItemPath repoRelativePath = this.getRepoRelativePath(item);
-            String pathString = repoRelativePath == null ? "/" : repoRelativePath
-                    .getPath();
-            this.addPropertyString(result, typeId, filter, PropertyIds.PATH, pathString);
+            this.addPropertyString(result, typeId, filter, PropertyIds.PATH,
+                    this.reposPathToCmisPath(itemPath));
 
             // folder properties
-            if (!this.repoPath.equals(itemPath.getPath())) {
+            if (!this.repoPath.getPath().equals(itemPath.getPath())) {
                 this.addPropertyId(result, typeId, filter, PropertyIds.PARENT_ID,
                         itemPath.getParent().getPath());
                 objectInfo.setHasParent(true);
@@ -651,11 +638,11 @@ public class ReposCmisRepository {
     }
 
     public void deleteObject(String objectId) {
-        this.runChange(new FileDelete(this.getItemId(objectId).getRelPath()));
+        this.runChange(new FileDelete(new CmsItemPath(objectId)));
     }
 
     public FailedToDeleteData deleteTree(String folderId) {
-        this.runChange(new FolderDelete(this.getItemId(folderId).getRelPath()));
+        this.runChange(new FolderDelete(new CmsItemPath(folderId)));
         return new FailedToDeleteDataImpl();
     }
 
@@ -666,7 +653,7 @@ public class ReposCmisRepository {
 
     public ContentStream getContentStream(String objectId, String streamId,
             BigInteger offset, BigInteger length) {
-        CmsItemId itemId = this.getItemId(objectId);
+        CmsItemId itemId = new CmsItemIdUrl(this.repository, objectId);
         final CmsItem item = this.lookup.getItem(itemId);
 
         ContentStreamImpl result;
@@ -686,45 +673,77 @@ public class ReposCmisRepository {
 
     public void setContentStream(Holder<String> objectId, Boolean overwriteFlag,
             ContentStream contentStream) {
-        CmsItemId itemId = this.getItemId(objectId.getValue());
+        CmsItemId itemId = new CmsItemIdUrl(this.repository, objectId.getValue());
         CmsItem item = this.lookup.getItem(itemId);
-        this.runChange(new FileModification(item.getId().getRelPath(), this
-                .getInputStream(item), contentStream.getStream()));
+        InputStream currentContent = null;
+        InputStream newContent = null;
+        try {
+            currentContent = this.getInputStream(item);
+            newContent = contentStream.getStream();
+            this.runChange(new FileModification(item.getId().getRelPath(), this
+                    .getInputStream(item), newContent));
+        } finally {
+            IOUtils.closeQuietly(currentContent);
+            IOUtils.closeQuietly(newContent);
+        }
     }
 
     public void appendContentStream(Holder<String> objectId, ContentStream contentStream,
             boolean isLastChunk) {
-        CmsItem item = this.lookup.getItem(this.getItemId(objectId.getValue()));
+        CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, objectId
+                .getValue()));
         // Creates a new input stream that returns first the existing content,
         // then the new.
-        InputStream existingContent = this.getInputStream(item);
-        InputStream stream = this.appendInputStreams(existingContent,
-                contentStream.getStream());
-        // Writes that stream to the item.
-        this.runChange(new FileModification(item.getId().getRelPath(), this
-                .getInputStream(item), stream));
+        InputStream currentContent = null;
+        InputStream newContent = null;
+        InputStream combinedContent = null;
+        try {
+            currentContent = this.getInputStream(item);
+            newContent = contentStream.getStream();
+            combinedContent = this.appendInputStreams(currentContent, newContent);
+            // Writes that stream to the item.
+            this.runChange(new FileModification(item.getId().getRelPath(),
+                    currentContent, combinedContent));
+        } finally {
+            IOUtils.closeQuietly(currentContent);
+            IOUtils.closeQuietly(newContent);
+            IOUtils.closeQuietly(combinedContent);
+        }
     }
 
     public void deleteContentStream(Holder<String> objectId) {
         // Overwrites item contents with an empty input stream.
-        CmsItem item = this.lookup.getItem(this.getItemId(objectId.getValue()));
-        this.runChange(new FileModification(item.getId().getRelPath(), this
-                .getInputStream(item), new ByteArrayInputStream(new byte[1])));
+        CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, objectId
+                .getValue()));
+        InputStream currentContent = null;
+        InputStream newContent = null;
+        try {
+            currentContent = this.getInputStream(item);
+            newContent = new ByteArrayInputStream(new byte[1]);
+            this.runChange(new FileModification(item.getId().getRelPath(),
+                    currentContent, newContent));
+        } finally {
+            IOUtils.closeQuietly(currentContent);
+            IOUtils.closeQuietly(newContent);
+        }
     }
 
     private InputStream getInputStream(final CmsItem item) {
-        final PipedInputStream inputStream = new PipedInputStream();
+        PipedInputStream inputStream;
+        final PipedOutputStream outputStream;
+        try {
+            inputStream = new PipedInputStream();
+            outputStream = new PipedOutputStream(inputStream);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         new Thread(new Runnable() {
             @Override
             public void run() {
-                PipedOutputStream outputStream = null;
                 try {
-                    outputStream = new PipedOutputStream(inputStream);
                     item.getContents(outputStream);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
                 } finally {
-                    IOUtils.closeQuietly(inputStream);
                     IOUtils.closeQuietly(outputStream);
                 }
             }
