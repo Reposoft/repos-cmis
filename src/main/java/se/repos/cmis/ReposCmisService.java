@@ -142,7 +142,7 @@ public class ReposCmisService extends AbstractCmisService {
             VersioningState versioningState, List<String> policies, Acl addAces,
             Acl removeAces, ExtensionsData extension) {
         return this.getRepository(repositoryId).createDocument(folderId, properties,
-                contentStream.getStream());
+                contentStream);
     }
 
     @Override

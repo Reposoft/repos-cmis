@@ -1,6 +1,8 @@
 package se.repos.cmis;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractServiceFactory;
 
@@ -10,6 +12,7 @@ import se.repos.authproxy.ReposCurrentUser;
 import se.repos.cms.backend.filehead.LocalCmsCommit;
 import se.repos.cms.backend.filehead.LocalCmsItemLookup;
 import se.repos.cms.backend.filehead.LocalRepoRevision;
+import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.RepoRevision;
 import se.simonsoft.cms.item.commit.CmsCommit;
@@ -28,10 +31,15 @@ public class TestModule extends AbstractModule {
         this.bind(CmsItemLookup.class).to(LocalCmsItemLookup.class);
         this.bind(RepoRevision.class).toInstance(new LocalRepoRevision());
 
-        new File("/tmp/repos").mkdir();
-        CmsRepository repo = new CmsRepository("http://localHost", "/tmp", "repos");
+        RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
+        String repositoryRoot = runtimeMxBean.getSystemProperties().get(
+                "org.apache.chemistry.opencmis.binding.repositoryRoot");
+        new File(repositoryRoot).mkdir();
+        CmsItemPath repoPath = new CmsItemPath(repositoryRoot);
+        CmsRepository repo = new CmsRepository("http://localHost", repoPath.getParent()
+                .getPath(), repoPath.getName());
         this.bind(CmsRepository.class).toInstance(repo);
-        
+
         ReposCurrentUser currentUser = new ReposCurrentUser() {
 
             @Override
@@ -60,10 +68,11 @@ public class TestModule extends AbstractModule {
             }
         };
         this.bind(ReposCurrentUser.class).toInstance(currentUser);
-        this.bind(String.class).annotatedWith(Names.named("repositoryId")).toInstance("repo");
+        this.bind(String.class).annotatedWith(Names.named("repositoryId"))
+                .toInstance("repo");
         this.bind(ReposCmisRepository.class);
-        
+
         ReposRepositoryManager manager = new ReposRepositoryManager();
-        bind(ReposRepositoryManager.class).toInstance(manager);
+        this.bind(ReposRepositoryManager.class).toInstance(manager);
     }
 }
