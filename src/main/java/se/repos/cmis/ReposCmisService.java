@@ -66,21 +66,21 @@ public class ReposCmisService extends AbstractCmisService {
         return infos;
     }
 
-    private ReposCmisRepository getRepository(String repositoryId) {
-        return this.manager.getRepository(repositoryId);
+    private ReposCmisRepository getRepository() {
+        return this.manager.getRepository(this.getCallContext().getRepositoryId());
     }
 
     @Override
     public TypeDefinitionList getTypeChildren(String repositoryId, String typeId,
             Boolean includePropertyDefinitions, BigInteger maxItems,
             BigInteger skipCount, ExtensionsData extension) {
-        return this.getRepository(repositoryId).getTypes();
+        return this.getRepository().getTypes();
     }
 
     @Override
     public TypeDefinition getTypeDefinition(String repositoryId, String typeId,
             ExtensionsData extension) {
-        return this.getRepository(repositoryId).getType(typeId);
+        return this.getRepository().getType(typeId);
     }
 
     @Override
@@ -89,7 +89,7 @@ public class ReposCmisService extends AbstractCmisService {
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includePathSegment, BigInteger maxItems, BigInteger skipCount,
             ExtensionsData extension) {
-        return this.getRepository(repositoryId).getChildren(this.context, folderId,
+        return this.getRepository().getChildren(this.context, folderId,
                 this.splitFilter(filter), this);
     }
 
@@ -98,7 +98,7 @@ public class ReposCmisService extends AbstractCmisService {
             String filter, Boolean includeAllowableActions,
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includeRelativePathSegment, ExtensionsData extension) {
-        return this.getRepository(repositoryId).getObjectParents(this.context, objectId,
+        return this.getRepository().getObjectParents(this.context, objectId,
                 this.splitFilter(filter), this);
     }
 
@@ -107,7 +107,7 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
-        return this.getRepository(repositoryId).getObject(this.context, objectId,
+        return this.getRepository().getObject(this.context, objectId,
                 this.splitFilter(filter), this);
     }
 
@@ -116,8 +116,8 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, BigInteger depth, String filter,
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
-        return this.getRepository(repositoryId).getDescendants(this.context, folderId,
-                depth, false, this.splitFilter(filter), this);
+        return this.getRepository().getDescendants(this.context, folderId, depth, false,
+                this.splitFilter(filter), this);
     }
 
     @Override
@@ -125,14 +125,14 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, BigInteger depth, String filter,
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
-        return this.getRepository(repositoryId).getDescendants(this.context, folderId,
-                depth, true, this.splitFilter(filter), this);
+        return this.getRepository().getDescendants(this.context, folderId, depth, true,
+                this.splitFilter(filter), this);
     }
 
     @Override
     public ObjectData getFolderParent(String repositoryId, String folderId,
             String filter, ExtensionsData extension) {
-        return this.getRepository(repositoryId).getFolderParent(this.context, folderId,
+        return this.getRepository().getFolderParent(this.context, folderId,
                 this.splitFilter(filter), this);
     }
 
@@ -141,15 +141,14 @@ public class ReposCmisService extends AbstractCmisService {
             String folderId, ContentStream contentStream,
             VersioningState versioningState, List<String> policies, Acl addAces,
             Acl removeAces, ExtensionsData extension) {
-        return this.getRepository(repositoryId).createDocument(folderId, properties,
-                contentStream);
+        return this.getRepository().createDocument(folderId, properties, contentStream);
     }
 
     @Override
     public String createFolder(String repositoryId, Properties properties,
             String folderId, List<String> policies, Acl addAces, Acl removeAces,
             ExtensionsData extension) {
-        return this.getRepository(repositoryId).createFolder(folderId, properties);
+        return this.getRepository().createFolder(folderId, properties);
     }
 
     @Override
@@ -157,21 +156,21 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
-        return this.getRepository(repositoryId).getObjectByPath(this.context, path,
+        return this.getRepository().getObjectByPath(this.context, path,
                 this.splitFilter(filter), this);
     }
 
     @Override
     public void deleteObjectOrCancelCheckOut(String repositoryId, String objectId,
             Boolean allVersions, ExtensionsData extension) {
-        this.getRepository(repositoryId).deleteObject(objectId);
+        this.getRepository().deleteObject(objectId);
     }
 
     @Override
     public FailedToDeleteData deleteTree(String repositoryId, String folderId,
             Boolean allVersions, UnfileObject unfileObjects, Boolean continueOnFailure,
             ExtensionsData extension) {
-        return this.getRepository(repositoryId).deleteTree(folderId);
+        return this.getRepository().deleteTree(folderId);
     }
 
     @Override
@@ -186,45 +185,50 @@ public class ReposCmisService extends AbstractCmisService {
     }
 
     @Override
-    public void addObjectToFolder(String repositoryId, String objectId, String folderId,
-            Boolean allVersions, ExtensionsData extension) {
-        this.getRepository(repositoryId).moveObject(objectId, folderId);
-    }
-
-    @Override
     public void removeObjectFromFolder(String repositoryId, String objectId,
             String folderId, ExtensionsData extension) {
-        this.getRepository(repositoryId).deleteObject(objectId);
+        this.getRepository().deleteObject(objectId);
     }
 
     @Override
     public ContentStream getContentStream(String repositoryId, String objectId,
             String streamId, BigInteger offset, BigInteger length,
             ExtensionsData extension) {
-        return this.getRepository(repositoryId).getContentStream(objectId, streamId,
-                offset, length);
+        return this.getRepository().getContentStream(objectId, streamId, offset, length);
     }
 
     @Override
     public void setContentStream(String repositoryId, Holder<String> objectId,
             Boolean overwriteFlag, Holder<String> changeToken,
             ContentStream contentStream, ExtensionsData extension) {
-        this.getRepository(repositoryId).setContentStream(objectId, overwriteFlag,
-                contentStream);
+        this.getRepository().setContentStream(objectId, overwriteFlag, contentStream);
     }
 
     @Override
     public void appendContentStream(String repositoryId, Holder<String> objectId,
             Holder<String> changeToken, ContentStream contentStream, boolean isLastChunk,
             ExtensionsData extension) {
-        this.getRepository(repositoryId).appendContentStream(objectId, contentStream,
-                isLastChunk);
+        this.getRepository().appendContentStream(objectId, contentStream, isLastChunk);
     }
 
     @Override
     public void deleteContentStream(String repositoryId, Holder<String> objectId,
             Holder<String> changeToken, ExtensionsData extension) {
-        this.getRepository(repositoryId).deleteContentStream(objectId);
+        this.getRepository().deleteContentStream(objectId);
+    }
+
+    @Override
+    public void updateProperties(String repositoryId, Holder<String> objectId,
+            Holder<String> changeToken, Properties properties, ExtensionsData extension) {
+        this.getRepository().updateProperties(this.getCallContext(), objectId,
+                properties, this);
+    }
+
+    @Override
+    public void moveObject(String repositoryId, Holder<String> objectId,
+            String targetFolderId, String sourceFolderId, ExtensionsData extension) {
+        this.getRepository().moveObject(this.getCallContext(), objectId, targetFolderId,
+                this);
     }
 
     private Set<String> splitFilter(String filter) {

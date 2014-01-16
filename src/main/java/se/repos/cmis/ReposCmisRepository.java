@@ -1,6 +1,7 @@
 package se.repos.cmis;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
@@ -28,6 +29,7 @@ import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.PropertyData;
 import org.apache.chemistry.opencmis.commons.data.PropertyString;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
+import org.apache.chemistry.opencmis.commons.definitions.PropertyDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinition;
 import org.apache.chemistry.opencmis.commons.definitions.TypeDefinitionList;
 import org.apache.chemistry.opencmis.commons.enums.Action;
@@ -39,6 +41,10 @@ import org.apache.chemistry.opencmis.commons.enums.CapabilityJoin;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityOrderBy;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityQuery;
 import org.apache.chemistry.opencmis.commons.enums.CapabilityRenditions;
+import org.apache.chemistry.opencmis.commons.enums.Updatability;
+import org.apache.chemistry.opencmis.commons.exceptions.CmisConstraintException;
+import org.apache.chemistry.opencmis.commons.exceptions.CmisInvalidArgumentException;
+import org.apache.chemistry.opencmis.commons.exceptions.CmisNameConstraintViolationException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisObjectNotFoundException;
 import org.apache.chemistry.opencmis.commons.impl.IOUtils;
 import org.apache.chemistry.opencmis.commons.impl.MimeTypes;
@@ -689,9 +695,18 @@ public class ReposCmisRepository {
         return new FailedToDeleteDataImpl();
     }
 
-    public Object moveObject(String objectId, String folderId) {
-        // TODO Auto-generated method stub
-        return null;
+    public void moveObject(CallContext context, Holder<String> objectId,
+            String targetFolderId, ObjectInfoHandler objectInfos) {
+        try {
+            CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, objectId
+                    .getValue()));
+            String itemName = item.getId().getRelPath().getName();
+            CmsItemPath newPath = new CmsItemPath(targetFolderId).append(itemName);
+            this.moveItem(item, newPath);
+            this.compileObject(context, item, null, objectInfos);
+        } catch (CmsItemNotFoundException e) {
+            throw new CmisObjectNotFoundException(e.getMessage(), e.getCause());
+        }
     }
 
     public ContentStream getContentStream(String objectId, String streamId,
@@ -711,7 +726,8 @@ public class ReposCmisRepository {
             result.setFileName(fileName);
             result.setLength(BigInteger.valueOf(item.getFilesize()));
             result.setMimeType(MimeTypes.getMIMEType(fileName));
-            result.setStream(this.getInputStream(item));
+            result.setStream(new ContentRangeInputStream(this.getInputStream(item),
+                    offset, length));
             return result;
         } catch (CmsItemNotFoundException e) {
             throw new CmisObjectNotFoundException(e.getMessage(), e.getCause());
@@ -779,6 +795,143 @@ public class ReposCmisRepository {
             IOUtils.closeQuietly(currentContent);
             IOUtils.closeQuietly(newContent);
         }
+    }
+
+    public void updateProperties(CallContext context, Holder<String> objectId,
+            Properties properties, ObjectInfoHandler objectInfos) {
+        try {
+            if (objectId == null || objectId.getValue() == null) {
+                throw new CmisInvalidArgumentException("Id is not valid!");
+            }
+            CmsItem item = this.lookup.getItem(new CmsItemIdUrl(this.repository, objectId
+                    .getValue()));
+
+            // check the properties
+            String typeId = (item.getKind() == CmsItemKind.Folder ? BaseTypeId.CMIS_FOLDER
+                    .value() : BaseTypeId.CMIS_DOCUMENT.value());
+            this.checkUpdateProperties(properties, typeId);
+
+            // get and check the new name
+            String newName = this.getStringProperty(properties, PropertyIds.NAME);
+            String oldName = item.getId().getRelPath().getName();
+            boolean isRename = (newName != null) && (!oldName.equals(newName));
+            if (isRename && !ReposCmisRepository.isValidName(newName)) {
+                throw new CmisNameConstraintViolationException("Name is not valid!");
+            }
+
+            if (isRename) {
+                this.renameItem(item, newName);
+            }
+        } catch (CmsItemNotFoundException e) {
+            throw new CmisObjectNotFoundException(e.getMessage(), e.getCause());
+        }
+    }
+
+    private void renameItem(CmsItem item, String newName) {
+        CmsItemPath oldPath = item.getId().getRelPath();
+        List<String> newPathSegments = oldPath.subPath(0,
+                oldPath.getPathSegmentsCount() - 2);
+        StringBuilder sb = new StringBuilder();
+        for (String pathSegment : newPathSegments) {
+            sb.append('/');
+            sb.append(pathSegment);
+        }
+        sb.append('/');
+        sb.append(newName);
+        CmsItemPath newPath = new CmsItemPath(sb.toString());
+        this.moveItem(item, newPath);
+    }
+
+    private void moveItem(CmsItem item, CmsItemPath newPath) {
+        InputStream content = null;
+        try {
+            CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
+            content = this.getInputStream(item);
+            // Move the file by adding an identical one, then deleting the
+            // original.
+            changes.add(new FileAdd(newPath, content));
+            changes.add(new FileDelete(item.getId().getRelPath()));
+            this.commit.run(changes);
+        } finally {
+            IOUtils.closeQuietly(content);
+        }
+    }
+
+    /**
+     * Checks a property set for an update.
+     */
+    private void checkUpdateProperties(Properties properties, String typeId) {
+        // check properties
+        if (properties == null || properties.getProperties() == null) {
+            throw new CmisInvalidArgumentException("Properties must be set!");
+        }
+
+        // check the name
+        String name = this.getStringProperty(properties, PropertyIds.NAME);
+        if (name != null) {
+            if (!ReposCmisRepository.isValidName(name)) {
+                throw new CmisNameConstraintViolationException("Name is not valid!");
+            }
+        }
+
+        // check type properties
+        this.checkTypeProperties(properties, typeId, false);
+    }
+
+    /**
+     * Checks if the property belong to the type and are settable.
+     */
+    private void checkTypeProperties(Properties properties, String typeId,
+            boolean isCreate) {
+        // check type
+        TypeDefinition type = this.typeManager.getInternalTypeDefinition(typeId);
+        if (type == null) {
+            throw new CmisObjectNotFoundException("Type '" + typeId + "' is unknown!");
+        }
+
+        // check if all required properties are there
+        for (PropertyData<?> prop : properties.getProperties().values()) {
+            PropertyDefinition<?> propType = type.getPropertyDefinitions().get(
+                    prop.getId());
+
+            // do we know that property?
+            if (propType == null) {
+                throw new CmisConstraintException("Property '" + prop.getId()
+                        + "' is unknown!");
+            }
+
+            // can it be set?
+            if (propType.getUpdatability() == Updatability.READONLY) {
+                throw new CmisConstraintException("Property '" + prop.getId()
+                        + "' is readonly!");
+            }
+
+            if (!isCreate) {
+                // can it be set?
+                if (propType.getUpdatability() == Updatability.ONCREATE) {
+                    throw new CmisConstraintException("Property '" + prop.getId()
+                            + "' cannot be updated!");
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if the given name is valid for a file system.
+     * 
+     * @param name
+     *            the name to check
+     * 
+     * @return <code>true</code> if the name is valid, <code>false</code>
+     *         otherwise
+     */
+    private static boolean isValidName(String name) {
+        if (name == null || name.length() == 0 || name.indexOf(File.separatorChar) != -1
+                || name.indexOf(File.pathSeparatorChar) != -1) {
+            return false;
+        }
+
+        return true;
     }
 
     private InputStream getInputStream(final CmsItem item) {
