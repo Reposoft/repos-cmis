@@ -74,7 +74,8 @@ public class ReposCmisService extends AbstractCmisService {
     public TypeDefinitionList getTypeChildren(String repositoryId, String typeId,
             Boolean includePropertyDefinitions, BigInteger maxItems,
             BigInteger skipCount, ExtensionsData extension) {
-        return this.getRepository().getTypes();
+        return this.getRepository().getTypeChildren(this.context, typeId,
+                includePropertyDefinitions, maxItems, skipCount);
     }
 
     @Override
@@ -90,7 +91,7 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includePathSegment, BigInteger maxItems, BigInteger skipCount,
             ExtensionsData extension) {
         return this.getRepository().getChildren(this.context, folderId,
-                this.splitFilter(filter), this);
+                this.splitFilter(filter), maxItems, skipCount, this);
     }
 
     @Override

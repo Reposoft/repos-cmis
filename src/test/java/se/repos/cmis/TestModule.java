@@ -3,6 +3,7 @@ package se.repos.cmis;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.util.Date;
 
 import org.apache.chemistry.opencmis.commons.impl.server.AbstractServiceFactory;
 
@@ -11,7 +12,6 @@ import se.repos.authproxy.AuthRequiredException;
 import se.repos.authproxy.ReposCurrentUser;
 import se.repos.cms.backend.filehead.LocalCmsCommit;
 import se.repos.cms.backend.filehead.LocalCmsItemLookup;
-import se.repos.cms.backend.filehead.LocalRepoRevision;
 import se.simonsoft.cms.item.CmsItemPath;
 import se.simonsoft.cms.item.CmsRepository;
 import se.simonsoft.cms.item.RepoRevision;
@@ -29,7 +29,7 @@ public class TestModule extends AbstractModule {
         this.bind(ReposCmisServiceFactory.class);
         this.bind(CmsCommit.class).to(LocalCmsCommit.class);
         this.bind(CmsItemLookup.class).to(LocalCmsItemLookup.class);
-        this.bind(RepoRevision.class).toInstance(new LocalRepoRevision());
+        this.bind(RepoRevision.class).toInstance(new RepoRevision(1, new Date()));
 
         RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
         String repositoryRoot = runtimeMxBean.getSystemProperties().get(

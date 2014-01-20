@@ -45,6 +45,7 @@ import org.apache.chemistry.opencmis.commons.enums.Updatability;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisConstraintException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisInvalidArgumentException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisNameConstraintViolationException;
+import org.apache.chemistry.opencmis.commons.exceptions.CmisNotSupportedException;
 import org.apache.chemistry.opencmis.commons.exceptions.CmisObjectNotFoundException;
 import org.apache.chemistry.opencmis.commons.impl.IOUtils;
 import org.apache.chemistry.opencmis.commons.impl.MimeTypes;
@@ -65,7 +66,6 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyIntegerImp
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertyStringImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryCapabilitiesImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.RepositoryInfoImpl;
-import org.apache.chemistry.opencmis.commons.impl.dataobjects.TypeDefinitionListImpl;
 import org.apache.chemistry.opencmis.commons.impl.server.ObjectInfoImpl;
 import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.server.ObjectInfoHandler;
@@ -197,11 +197,10 @@ public class ReposCmisRepository {
         return repositoryInfo;
     }
 
-    public TypeDefinitionList getTypes() {
-        List<TypeDefinition> types = this.typeManager.getInternalTypeDefinitions();
-        TypeDefinitionListImpl typeDefs = new TypeDefinitionListImpl();
-        typeDefs.setList(types);
-        return typeDefs;
+    public TypeDefinitionList getTypeChildren(CallContext context, String typeId,
+            Boolean includePropertyDefinitions, BigInteger maxItems, BigInteger skipCount) {
+        return this.typeManager.getTypeChildren(context, typeId,
+                includePropertyDefinitions, maxItems, skipCount);
     }
 
     public TypeDefinition getType(String typeId) {
@@ -213,21 +212,41 @@ public class ReposCmisRepository {
     }
 
     public ObjectInFolderList getChildren(CallContext context, String folderId,
-            Set<String> orgFilter, ObjectInfoHandler objectInfos) {
+            Set<String> orgFilter, BigInteger maxItems, BigInteger skipCount,
+            ObjectInfoHandler objectInfos) {
         try {
-            ObjectInFolderListImpl children = new ObjectInFolderListImpl();
             CmsItemId itemID = new CmsItemIdUrl(this.repository, folderId);
             CmsItem folder = this.lookup.getItem(itemID);
             if (folder.getKind() != CmsItemKind.Folder) {
-                return children;
+                throw new CmisNotSupportedException("Cannot get children of file: "
+                        + folderId);
             }
-            ArrayList<ObjectInFolderData> objectData = new ArrayList<ObjectInFolderData>();
-            for (CmsItem item : this.lookup.getImmediates(itemID)) {
-                objectData.add(this.compileObjectData(context, item, orgFilter,
-                        objectInfos));
+
+            ObjectInFolderListImpl children = new ObjectInFolderListImpl();
+            children.setObjects(new ArrayList<ObjectInFolderData>());
+            children.setHasMoreItems(false);
+
+            int skip = skipCount == null ? 0 : skipCount.intValue();
+            if (skip < 0) {
+                skip = 0;
             }
-            children.setObjects(objectData);
-            children.setNumItems(BigInteger.valueOf((objectData.size())));
+
+            int max = maxItems == null ? Integer.MAX_VALUE : maxItems.intValue();
+
+            Set<CmsItem> items = this.lookup.getImmediates(itemID);
+            children.setNumItems(BigInteger.valueOf((items.size())));
+            for (CmsItem item : items) {
+                if (skip > 0) {
+                    skip--;
+                } else if (children.getObjects().size() >= max) {
+                    children.setHasMoreItems(true);
+                    break;
+                } else {
+                    children.getObjects()
+                            .add(this.compileObjectData(context, item, orgFilter,
+                                    objectInfos));
+                }
+            }
             return children;
         } catch (CmsItemNotFoundException e) {
             throw new CmisObjectNotFoundException(e.getMessage(), e.getCause());
