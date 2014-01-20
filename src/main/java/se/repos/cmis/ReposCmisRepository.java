@@ -1,11 +1,10 @@
 package se.repos.cmis;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -954,26 +953,9 @@ public class ReposCmisRepository {
     }
 
     private InputStream getInputStream(final CmsItem item) {
-        PipedInputStream inputStream;
-        final PipedOutputStream outputStream;
-        try {
-            inputStream = new PipedInputStream();
-            outputStream = new PipedOutputStream(inputStream);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    item.getContents(outputStream);
-                } finally {
-                    IOUtils.closeQuietly(outputStream);
-                }
-            }
-        }).start();
-        return inputStream;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        item.getContents(out);
+        return new ByteArrayInputStream(out.toByteArray());
     }
 
     private InputStream appendInputStreams(final InputStream first,
