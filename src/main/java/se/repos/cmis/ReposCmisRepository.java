@@ -420,7 +420,6 @@ public class ReposCmisRepository {
             objectInfo.setBaseType(BaseTypeId.CMIS_DOCUMENT);
             objectInfo.setTypeId(typeId);
             objectInfo.setHasAcl(true);
-            objectInfo.setHasContent(true);
             objectInfo.setHasParent(true);
             objectInfo.setVersionSeriesId(null);
             objectInfo.setIsCurrentVersion(true);
@@ -741,9 +740,15 @@ public class ReposCmisRepository {
             }
 
             String fileName = item.getId().getRelPath().getName();
-            result.setFileName(fileName);
-            result.setLength(BigInteger.valueOf(item.getFilesize()));
-            result.setMimeType(MimeTypes.getMIMEType(fileName));
+            BigInteger streamLength = BigInteger.valueOf(item.getFilesize());
+            result.setLength(streamLength);
+            if (!streamLength.equals(BigInteger.ZERO)) {
+                result.setFileName(fileName);
+                result.setMimeType(MimeTypes.getMIMEType(fileName));
+            } else {
+                result.setFileName(null);
+                result.setMimeType(null);
+            }
             result.setStream(new ContentRangeInputStream(this.getInputStream(item),
                     offset, length));
             return result;
