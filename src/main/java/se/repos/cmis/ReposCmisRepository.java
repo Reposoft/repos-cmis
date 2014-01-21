@@ -294,6 +294,7 @@ public class ReposCmisRepository {
             ObjectParentDataImpl parentData = new ObjectParentDataImpl();
             parentData.setObject(this.compileObject(context, parent, orgFilter,
                     objectInfos));
+            // TODO Only add relative path segment if requested.
             parentData.setRelativePathSegment(itemPath.getName());
             return Collections.<ObjectParentData> singletonList(parentData);
         } catch (CmsItemNotFoundException e) {
@@ -377,6 +378,7 @@ public class ReposCmisRepository {
         ObjectDataImpl object = new ObjectDataImpl();
         ObjectInfoImpl objectInfo = new ObjectInfoImpl();
         object.setProperties(this.compileProperties(context, item, orgFilter, objectInfo));
+        // TODO Only compile allowable actions if requested.
         object.setAllowableActions(this.compileAllowableActions(item));
         objectInfo.setObject(object);
         objectInfos.addObjectInfo(objectInfo);
@@ -730,7 +732,12 @@ public class ReposCmisRepository {
             BigInteger offset, BigInteger length) {
         try {
             CmsItemId itemId = new CmsItemIdUrl(this.repository, objectId);
-            final CmsItem item = this.lookup.getItem(itemId);
+            CmsItem item = this.lookup.getItem(itemId);
+
+            long streamLength = item.getFilesize();
+            if (streamLength == 0L) {
+                throw new CmisConstraintException("Document has no content!");
+            }
 
             ContentStreamImpl result;
             if ((offset != null && offset.longValue() > 0) || length != null) {
@@ -739,16 +746,10 @@ public class ReposCmisRepository {
                 result = new ContentStreamImpl();
             }
 
+            result.setLength(BigInteger.valueOf(streamLength));
             String fileName = item.getId().getRelPath().getName();
-            BigInteger streamLength = BigInteger.valueOf(item.getFilesize());
-            result.setLength(streamLength);
-            if (!streamLength.equals(BigInteger.ZERO)) {
-                result.setFileName(fileName);
-                result.setMimeType(MimeTypes.getMIMEType(fileName));
-            } else {
-                result.setFileName(null);
-                result.setMimeType(null);
-            }
+            result.setFileName(fileName);
+            result.setMimeType(MimeTypes.getMIMEType(fileName));
             result.setStream(new ContentRangeInputStream(this.getInputStream(item),
                     offset, length));
             return result;
@@ -853,7 +854,7 @@ public class ReposCmisRepository {
     private void renameItem(CmsItem item, String newName, Holder<String> objectId) {
         CmsItemPath oldPath = item.getId().getRelPath();
         List<String> newPathSegments = oldPath.subPath(0,
-                oldPath.getPathSegmentsCount() - 2);
+                oldPath.getPathSegmentsCount() - 1);
         StringBuilder sb = new StringBuilder();
         for (String pathSegment : newPathSegments) {
             sb.append('/');
@@ -868,6 +869,7 @@ public class ReposCmisRepository {
     private void moveItem(CmsItem item, CmsItemPath newPath, Holder<String> objectId) {
         InputStream content = null;
         try {
+            // TODO Ensure that folders can be moved correctly.
             CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
             content = this.getInputStream(item);
             // Move the file by adding an identical one, then deleting the
