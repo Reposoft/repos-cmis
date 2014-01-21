@@ -719,7 +719,7 @@ public class ReposCmisRepository {
                     .getValue()));
             String itemName = item.getId().getRelPath().getName();
             CmsItemPath newPath = new CmsItemPath(targetFolderId).append(itemName);
-            this.moveItem(item, newPath);
+            this.moveItem(item, newPath, objectId);
             this.compileObject(context, item, null, objectInfos);
         } catch (CmsItemNotFoundException e) {
             throw new CmisObjectNotFoundException(e.getMessage(), e.getCause());
@@ -843,14 +843,14 @@ public class ReposCmisRepository {
             }
 
             if (isRename) {
-                this.renameItem(item, newName);
+                this.renameItem(item, newName, objectId);
             }
         } catch (CmsItemNotFoundException e) {
             throw new CmisObjectNotFoundException(e.getMessage(), e.getCause());
         }
     }
 
-    private void renameItem(CmsItem item, String newName) {
+    private void renameItem(CmsItem item, String newName, Holder<String> objectId) {
         CmsItemPath oldPath = item.getId().getRelPath();
         List<String> newPathSegments = oldPath.subPath(0,
                 oldPath.getPathSegmentsCount() - 2);
@@ -862,10 +862,10 @@ public class ReposCmisRepository {
         sb.append('/');
         sb.append(newName);
         CmsItemPath newPath = new CmsItemPath(sb.toString());
-        this.moveItem(item, newPath);
+        this.moveItem(item, newPath, objectId);
     }
 
-    private void moveItem(CmsItem item, CmsItemPath newPath) {
+    private void moveItem(CmsItem item, CmsItemPath newPath, Holder<String> objectId) {
         InputStream content = null;
         try {
             CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
@@ -875,6 +875,7 @@ public class ReposCmisRepository {
             changes.add(new FileAdd(newPath, content));
             changes.add(new FileDelete(item.getId().getRelPath()));
             this.commit.run(changes);
+            objectId.setValue(newPath.getPath());
         } finally {
             IOUtils.closeQuietly(content);
         }
@@ -957,7 +958,7 @@ public class ReposCmisRepository {
         return true;
     }
 
-    private InputStream getInputStream(final CmsItem item) {
+    private InputStream getInputStream(CmsItem item) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         item.getContents(out);
         return new ByteArrayInputStream(out.toByteArray());
