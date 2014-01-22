@@ -17,6 +17,7 @@ import org.apache.chemistry.opencmis.commons.data.FailedToDeleteData;
 import org.apache.chemistry.opencmis.commons.data.ObjectData;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderContainer;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderList;
+import org.apache.chemistry.opencmis.commons.data.ObjectList;
 import org.apache.chemistry.opencmis.commons.data.ObjectParentData;
 import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.RepositoryInfo;
@@ -234,6 +235,15 @@ public class ReposCmisService extends AbstractCmisService {
             String targetFolderId, String sourceFolderId, ExtensionsData extension) {
         this.getRepository().moveObject(this.getCallContext(), objectId, targetFolderId,
                 this);
+    }
+
+    @Override
+    public ObjectList getCheckedOutDocs(String repositoryId, String folderId,
+            String filter, String orderBy, Boolean includeAllowableActions,
+            IncludeRelationships includeRelationships, String renditionFilter,
+            BigInteger maxItems, BigInteger skipCount, ExtensionsData extension) {
+        return this.getRepository().getCheckedOutDocs(folderId, filter,
+                includeAllowableActions, maxItems, skipCount, this);
     }
 
     private Set<String> splitFilter(String filter) {

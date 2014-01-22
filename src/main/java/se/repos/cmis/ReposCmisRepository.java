@@ -23,6 +23,7 @@ import org.apache.chemistry.opencmis.commons.data.ObjectData;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderContainer;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderData;
 import org.apache.chemistry.opencmis.commons.data.ObjectInFolderList;
+import org.apache.chemistry.opencmis.commons.data.ObjectList;
 import org.apache.chemistry.opencmis.commons.data.ObjectParentData;
 import org.apache.chemistry.opencmis.commons.data.Properties;
 import org.apache.chemistry.opencmis.commons.data.PropertyData;
@@ -55,6 +56,7 @@ import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectDataImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderContainerImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderDataImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectInFolderListImpl;
+import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectListImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.ObjectParentDataImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PartialContentStreamImpl;
 import org.apache.chemistry.opencmis.commons.impl.dataobjects.PropertiesImpl;
@@ -821,6 +823,13 @@ public class ReposCmisRepository {
         }
     }
 
+    public ObjectList getCheckedOutDocs(String folderId, String filter,
+            Boolean includeAllowableActions, BigInteger maxItems, BigInteger skipCount,
+            ObjectInfoHandler objectInfos) {
+        // PWCs are not supported yet.
+        return new ObjectListImpl();
+    }
+
     public void updateProperties(CallContext context, Holder<String> objectId,
             Properties properties, ObjectInfoHandler objectInfos) {
         if (objectId == null || objectId.getValue() == null) {
@@ -862,9 +871,9 @@ public class ReposCmisRepository {
     }
 
     private void moveItem(CmsItem item, CmsItemPath newPath, Holder<String> objectId) {
+        // TODO Ensure that folders can be moved correctly.
         InputStream content = null;
         try {
-            // TODO Ensure that folders can be moved correctly.
             CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
             content = this.getInputStream(item);
             // Move the file by adding an identical one, then deleting the
