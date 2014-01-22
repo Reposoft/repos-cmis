@@ -91,7 +91,8 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includePathSegment, BigInteger maxItems, BigInteger skipCount,
             ExtensionsData extension) {
         return this.getRepository().getChildren(this.context, folderId,
-                this.splitFilter(filter), maxItems, skipCount, this);
+                this.splitFilter(filter), maxItems, skipCount, includeAllowableActions,
+                includePathSegment, this);
     }
 
     @Override
@@ -100,7 +101,8 @@ public class ReposCmisService extends AbstractCmisService {
             IncludeRelationships includeRelationships, String renditionFilter,
             Boolean includeRelativePathSegment, ExtensionsData extension) {
         return this.getRepository().getObjectParents(this.context, objectId,
-                this.splitFilter(filter), this);
+                this.splitFilter(filter), includeAllowableActions,
+                includeRelativePathSegment, this);
     }
 
     @Override
@@ -109,7 +111,7 @@ public class ReposCmisService extends AbstractCmisService {
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
         return this.getRepository().getObject(this.context, objectId,
-                this.splitFilter(filter), this);
+                this.splitFilter(filter), includeAllowableActions, this);
     }
 
     @Override
@@ -118,7 +120,8 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
         return this.getRepository().getDescendants(this.context, folderId, depth, false,
-                this.splitFilter(filter), this);
+                this.splitFilter(filter), includeAllowableActions, includePathSegment,
+                this);
     }
 
     @Override
@@ -127,7 +130,8 @@ public class ReposCmisService extends AbstractCmisService {
             Boolean includeAllowableActions, IncludeRelationships includeRelationships,
             String renditionFilter, Boolean includePathSegment, ExtensionsData extension) {
         return this.getRepository().getDescendants(this.context, folderId, depth, true,
-                this.splitFilter(filter), this);
+                this.splitFilter(filter), includeAllowableActions, includePathSegment,
+                this);
     }
 
     @Override
@@ -158,7 +162,7 @@ public class ReposCmisService extends AbstractCmisService {
             String renditionFilter, Boolean includePolicyIds, Boolean includeAcl,
             ExtensionsData extension) {
         return this.getRepository().getObjectByPath(this.context, path,
-                this.splitFilter(filter), this);
+                this.splitFilter(filter), includeAllowableActions, this);
     }
 
     @Override

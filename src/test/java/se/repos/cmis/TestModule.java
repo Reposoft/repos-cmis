@@ -29,6 +29,7 @@ public class TestModule extends AbstractModule {
         this.bind(ReposCmisServiceFactory.class);
         this.bind(CmsCommit.class).to(LocalCmsCommit.class);
         this.bind(CmsItemLookup.class).to(LocalCmsItemLookup.class);
+        this.bind(CmisIdService.class).to(RandomCmisIdService.class);
         this.bind(RepoRevision.class).toInstance(new RepoRevision(1, new Date()));
 
         RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();
