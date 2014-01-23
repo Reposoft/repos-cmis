@@ -871,15 +871,26 @@ public class ReposCmisRepository {
     }
 
     private void moveItem(CmsItem item, CmsItemPath newPath, Holder<String> objectId) {
-        // TODO Ensure that folders can be moved correctly.
         InputStream content = null;
         try {
             CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
-            content = this.getInputStream(item);
-            // Move the file by adding an identical one, then deleting the
-            // original.
-            changes.add(new FileAdd(newPath, content));
-            changes.add(new FileDelete(item.getId().getRelPath()));
+            CmsItemPath oldPath = item.getId().getRelPath();
+            if (item.getKind() == CmsItemKind.File) {
+                content = this.getInputStream(item);
+                changes.add(new FileAdd(newPath, content));
+                changes.add(new FileDelete(oldPath));
+            } else {
+                changes.add(new FolderAdd(newPath));
+                changes.add(new FolderDelete(oldPath));
+                for (CmsItemId childId : this.lookup.getDescendants(item.getId())) {
+                    CmsItem child = this.lookup.getItem(childId);
+                    CmsItemPath newChildPath = this.replaceFirstPathSegment(
+                            childId.getRelPath(), newPath.getPathSegments().get(0));
+                    Holder<String> childCmisId = new Holder<String>(
+                            this.idService.getCmisId(childId));
+                    this.moveItem(child, newChildPath, childCmisId);
+                }
+            }
             this.commit.run(changes);
             CmsItemId newId = new CmsItemIdUrl(this.repository, newPath);
             this.idService.deleteItem(item.getId(),
@@ -889,6 +900,19 @@ public class ReposCmisRepository {
         } finally {
             IOUtils.closeQuietly(content);
         }
+    }
+
+    private CmsItemPath replaceFirstPathSegment(CmsItemPath relPath, String string) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('/');
+        sb.append(string);
+        for (String segment : relPath.getPathSegments().subList(1,
+                relPath.getPathSegmentsCount())) {
+            sb.append('/');
+            sb.append(segment);
+        }
+        String pathString = sb.toString();
+        return new CmsItemPath(pathString);
     }
 
     /**
