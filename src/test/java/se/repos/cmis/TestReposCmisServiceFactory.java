@@ -7,12 +7,13 @@ import org.apache.chemistry.opencmis.commons.server.CmisService;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
-// TODO Find out how to run this class as a stand alone server.
 /**
  * Demo implementation of {@link ReposCmisServiceFactory} that uses the classes
  * in se.repos.cms.backend.filehead.* instead of the real CMS as a back end.
  * 
- * To run this class:
+ * To run this class: Open a shell in the project directory and run the command
+ * "mvn jetty:run-war $PORT_NUMBER", where $PORT_NUMBER is the port you want to
+ * run the server on.
  * 
  * To test this class: Start any of the tests in
  * org.apache.chemistry.opencmis.tck.tests.*, and set the following VM
