@@ -31,7 +31,9 @@ import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.spi.Holder;
 
 /**
- * CMIS Service Implementation.
+ * CMIS Service Implementation. This class just performs some simple parameter
+ * parsing and looks up the {@link ReposCmisRepository} to delegate the
+ * operation to.
  */
 public class ReposCmisService extends AbstractCmisService {
     private CallContext context;

@@ -13,6 +13,13 @@ import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.commons.server.CmisService;
 import org.apache.chemistry.opencmis.server.support.CmisServiceWrapper;
 
+/**
+ * {@link AbstractServiceFactory} is a CMIS type that creates
+ * {@link CmisService} objects. It is essentially the back end to a Chemistry
+ * server. This one creates {@link ReposCmisService}. It needs a
+ * {@link ReposRepositoryManager} as a (possibly injected) constructor
+ * parameter.
+ */
 public class ReposCmisServiceFactory extends AbstractServiceFactory {
     private static final BigInteger DEFAULT_MAX_ITEMS_TYPES = BigInteger.valueOf(50);
     private static final BigInteger DEFAULT_DEPTH_TYPES = BigInteger.valueOf(-1);

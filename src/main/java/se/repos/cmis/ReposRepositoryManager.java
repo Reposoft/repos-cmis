@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) Repos Mjukvara AB
+ */
 package se.repos.cmis;
 
 import java.util.Collection;
@@ -8,6 +11,10 @@ import org.apache.chemistry.opencmis.commons.exceptions.CmisObjectNotFoundExcept
 
 import com.google.inject.Inject;
 
+/**
+ * In CMIS, the repository to perform an operation on is identified by a string.
+ * This type maps these string repository IDs to {@link ReposCmisRepository}. 
+ */
 public class ReposRepositoryManager {
     private Map<String, ReposCmisRepository> repositories;
     

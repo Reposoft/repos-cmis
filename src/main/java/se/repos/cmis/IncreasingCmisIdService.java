@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) Repos Mjukvara AB
+ */
 package se.repos.cmis;
 
 import java.util.HashMap;
@@ -8,13 +11,17 @@ import se.simonsoft.cms.item.CmsItemId;
 
 import com.google.inject.Inject;
 
-public class RandomCmisIdService implements CmisIdService {
+/**
+ * Assigns each item an ID based on an integer. So the first ID assigned will be
+ * "0", the second "1" and so on.. The IDs are stored in memory in a table.
+ */
+public class IncreasingCmisIdService implements CmisIdService {
     private HashMap<String, CmsItemId> idToItem;
     private HashMap<CmsItemId, String> itemToId;
-    private long seed = 0L;
+    private long label = 0L;
 
     @Inject
-    public RandomCmisIdService() {
+    public IncreasingCmisIdService() {
         this.idToItem = new HashMap<String, CmsItemId>();
         this.itemToId = new HashMap<CmsItemId, String>();
     }
@@ -41,7 +48,7 @@ public class RandomCmisIdService implements CmisIdService {
             return this.itemToId.get(item);
         }
 
-        String newCmisId = Long.toString(this.seed++);
+        String newCmisId = Long.toString(this.label++);
         this.putItem(item, newCmisId);
         return newCmisId;
     }

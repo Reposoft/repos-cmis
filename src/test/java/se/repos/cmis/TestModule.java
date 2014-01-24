@@ -21,6 +21,14 @@ import se.simonsoft.cms.item.info.CmsItemLookup;
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 
+/**
+ * A {@link AbstractModule} that binds all the interface types used by
+ * {@link ReposCmisRepository} to classes in se.repos.cms.backend.filehead.*
+ * Checks the VM parameter
+ * "org.apache.chemistry.opencmis.binding.repositoryRoot" to get the repository
+ * root folder. Used by {@link TestReposCmisServiceFactory} to get an actually
+ * runnable {@link AbstractServiceFactory}.
+ */
 public class TestModule extends AbstractModule {
 
     @Override
@@ -29,7 +37,7 @@ public class TestModule extends AbstractModule {
         this.bind(ReposCmisServiceFactory.class);
         this.bind(CmsCommit.class).to(LocalCmsCommit.class);
         this.bind(CmsItemLookup.class).to(LocalCmsItemLookup.class);
-        this.bind(CmisIdService.class).to(RandomCmisIdService.class);
+        this.bind(CmisIdService.class).to(IncreasingCmisIdService.class);
         this.bind(RepoRevision.class).toInstance(new RepoRevision(1, new Date()));
 
         RuntimeMXBean runtimeMxBean = ManagementFactory.getRuntimeMXBean();

@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) Repos Mjukvara AB
+ */
 package se.repos.cmis;
 
 import java.math.BigInteger;
@@ -20,7 +23,8 @@ import org.apache.chemistry.opencmis.commons.server.CallContext;
 import org.apache.chemistry.opencmis.server.support.TypeDefinitionFactory;
 
 /**
- * Manages the type definitions for all FileShare repositories.
+ * Manages the type definitions for a {@link ReposCmisRepository}. Since this is
+ * a simple repository, we have just two types: files and folders.
  */
 public class ReposTypeManager {
 

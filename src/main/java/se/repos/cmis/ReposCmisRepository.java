@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) Repos Mjukvara AB
+ */
 package se.repos.cmis;
 
 import java.io.ByteArrayInputStream;
@@ -92,6 +95,12 @@ import se.simonsoft.cms.item.info.CmsItemLookup;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
+/**
+ * Type that represents a single CMIS repository with Simonsoft CMS as the back
+ * end. Repository dependencies are used through injected interface types, like
+ * {@link CmsCommit} and {@link CmsItemLookup}. This should make it relatively
+ * simple to switch back end.
+ */
 public class ReposCmisRepository {
     private static final String USER_UNKNOWN = "<unknown>";
     private final String repositoryId;
@@ -165,6 +174,12 @@ public class ReposCmisRepository {
         }
     }
 
+    /**
+     * Returns a list of repository capabilities to the client. For a summary of
+     * the capabilities, run the TCK repository basic test group.
+     * 
+     * @see org.apache.chemistry.opencmis.tck.tests.basics.BasicsTestGroup
+     */
     public RepositoryInfo getRepositoryInfo() {
         RepositoryInfoImpl repositoryInfo = new RepositoryInfoImpl();
         repositoryInfo.setId(this.repositoryId);
@@ -215,6 +230,9 @@ public class ReposCmisRepository {
         return ty;
     }
 
+    /**
+     * @see ReposCmisService.getChildren
+     */
     public ObjectInFolderList getChildren(CallContext context, String folderId,
             Set<String> orgFilter, BigInteger maxItems, BigInteger skipCount,
             Boolean includeAllowableActions, Boolean includePathSegment,
@@ -253,6 +271,9 @@ public class ReposCmisRepository {
         return children;
     }
 
+    /**
+     * @see ReposCmisService.getDescendants
+     */
     public List<ObjectInFolderContainer> getDescendants(CallContext context,
             String folderId, BigInteger depth, boolean foldersOnly,
             Set<String> orgFilter, Boolean includeAllowableActions,
@@ -277,6 +298,9 @@ public class ReposCmisRepository {
         return objects;
     }
 
+    /**
+     * @see ReposCmisService.getObjectParents
+     */
     public List<ObjectParentData> getObjectParents(CallContext context, String objectId,
             Set<String> orgFilter, Boolean includeAllowableActions,
             Boolean includeRelativePathSegment, ObjectInfoHandler objectInfos) {
@@ -298,6 +322,9 @@ public class ReposCmisRepository {
         return Collections.<ObjectParentData> singletonList(parentData);
     }
 
+    /**
+     * @see ReposCmisService.getObject
+     */
     public ObjectData getObject(CallContext context, String objectId,
             Set<String> orgFilter, Boolean includeAllowableActions,
             ObjectInfoHandler objectInfos) {
@@ -306,6 +333,9 @@ public class ReposCmisRepository {
                 objectInfos);
     }
 
+    /**
+     * @see ReposCmisService.getFolderParent
+     */
     public ObjectData getFolderParent(CallContext context, String folderId,
             Set<String> orgFilter, ObjectInfoHandler objectInfos) {
         return this
@@ -313,6 +343,9 @@ public class ReposCmisRepository {
                 .get(0).getObject();
     }
 
+    /**
+     * @see ReposCmisService.createDocument
+     */
     public String createDocument(String folderId, Properties properties,
             ContentStream contentStream) {
         InputStream content = null;
@@ -333,6 +366,9 @@ public class ReposCmisRepository {
         }
     }
 
+    /**
+     * @see ReposCmisService.createFolder
+     */
     public String createFolder(String folderId, Properties properties) {
         String newFolderName = this.getStringProperty(properties, PropertyIds.NAME);
         CmsItemPath parentFolderPath = this.idService.getItemId(folderId).getRelPath();
@@ -341,6 +377,9 @@ public class ReposCmisRepository {
         return this.idService.getCmisId(new CmsItemIdUrl(this.repository, newFolderPath));
     }
 
+    /**
+     * @see ReposCmisService.getObjectByPath
+     */
     public ObjectData getObjectByPath(CallContext context, String path,
             Set<String> orgFilter, Boolean includeAllowableActions,
             ObjectInfoHandler objectInfos) {
@@ -351,6 +390,9 @@ public class ReposCmisRepository {
                 objectInfos);
     }
 
+    /**
+     * Compiles an {@link ObjectInFolderContainer} from a {@link CmsItem}.
+     */
     private ObjectInFolderContainer compileObjectContainer(CallContext context,
             CmsItem item, Set<String> orgFilter, Boolean includeAllowableActions,
             ObjectInfoHandler objectInfos) {
@@ -361,6 +403,9 @@ public class ReposCmisRepository {
         return container;
     }
 
+    /**
+     * Compiles an {@link ObjectInFolderData} from a {@link CmsItem}.
+     */
     private ObjectInFolderData compileObjectData(CallContext context, CmsItem item,
             Set<String> orgFilter, Boolean includeAllowableActions,
             ObjectInfoHandler objectInfos) {
@@ -371,6 +416,9 @@ public class ReposCmisRepository {
         return objectData;
     }
 
+    /**
+     * Compiles an {@link ObjectData} from a {@link CmsItem}.
+     */
     private ObjectData compileObject(CallContext context, CmsItem item,
             Set<String> orgFilter, Boolean includeAllowableActions,
             ObjectInfoHandler objectInfos) {
@@ -643,6 +691,9 @@ public class ReposCmisRepository {
         return true;
     }
 
+    /**
+     * Compiles the allowable actions for a file or folder.
+     */
     private AllowableActions compileAllowableActions(CmsItem item) {
         if (item == null) {
             throw new NullPointerException();
@@ -705,12 +756,18 @@ public class ReposCmisRepository {
         return result;
     }
 
+    /**
+     * @see ReposCmisService.deleteObject
+     */
     public void deleteObject(String objectId) {
         CmsItemId item = this.idService.getItemId(objectId);
         this.runChange(new FileDelete(item.getRelPath()));
         this.idService.deleteItem(item, objectId);
     }
 
+    /**
+     * @see ReposCmisService.deleteTree
+     */
     public FailedToDeleteData deleteTree(String folderId) {
         CmsItemId folder = this.idService.getItemId(folderId);
 
@@ -731,6 +788,9 @@ public class ReposCmisRepository {
         return new FailedToDeleteDataImpl();
     }
 
+    /**
+     * @see ReposCmisService.moveObject
+     */
     public void moveObject(CallContext context, Holder<String> objectId,
             String targetFolderId, ObjectInfoHandler objectInfos) {
         CmsItem item = this.lookup.getItem(this.idService.getItemId(objectId.getValue()));
@@ -741,6 +801,9 @@ public class ReposCmisRepository {
         this.compileObject(context, item, null, false, objectInfos);
     }
 
+    /**
+     * @see ReposCmisService.getContentStream
+     */
     public ContentStream getContentStream(String objectId, String streamId,
             BigInteger offset, BigInteger length) {
         CmsItem item = this.lookup.getItem(this.idService.getItemId(objectId));
@@ -766,6 +829,9 @@ public class ReposCmisRepository {
         return result;
     }
 
+    /**
+     * @see ReposCmisService.setContentStream
+     */
     public void setContentStream(Holder<String> objectId, Boolean overwriteFlag,
             ContentStream contentStream) {
         InputStream currentContent = null;
@@ -783,6 +849,9 @@ public class ReposCmisRepository {
         }
     }
 
+    /**
+     * @see ReposCmisService.appendContentStream
+     */
     public void appendContentStream(Holder<String> objectId, ContentStream contentStream,
             boolean isLastChunk) {
         // Creates a new input stream that returns first the existing content,
@@ -806,6 +875,9 @@ public class ReposCmisRepository {
         }
     }
 
+    /**
+     * @see ReposCmisService.deleteContentStream
+     */
     public void deleteContentStream(Holder<String> objectId) {
         // Overwrites item contents with an empty input stream.
         InputStream currentContent = null;
@@ -823,6 +895,12 @@ public class ReposCmisRepository {
         }
     }
 
+    /**
+     * As PWCs are not supported by this CMIS repository yet, the returned list
+     * is always empty.
+     * 
+     * @see ReposCmisService.getCheckedOutDocs
+     */
     public ObjectList getCheckedOutDocs(String folderId, String filter,
             Boolean includeAllowableActions, BigInteger maxItems, BigInteger skipCount,
             ObjectInfoHandler objectInfos) {
@@ -830,6 +908,9 @@ public class ReposCmisRepository {
         return new ObjectListImpl();
     }
 
+    /**
+     * @see ReposCmisService.updateProperties
+     */
     public void updateProperties(CallContext context, Holder<String> objectId,
             Properties properties, ObjectInfoHandler objectInfos) {
         if (objectId == null || objectId.getValue() == null) {
@@ -855,7 +936,11 @@ public class ReposCmisRepository {
         }
     }
 
+    /**
+     * Renames a file or folder.
+     */
     private void renameItem(CmsItem item, String newName, Holder<String> objectId) {
+        // Calculates the new path by replacing the last path segment.
         CmsItemPath oldPath = item.getId().getRelPath();
         List<String> newPathSegments = oldPath.subPath(0,
                 oldPath.getPathSegmentsCount() - 1);
@@ -867,19 +952,25 @@ public class ReposCmisRepository {
         sb.append('/');
         sb.append(newName);
         CmsItemPath newPath = new CmsItemPath(sb.toString());
+        // Moves the item to the new path.
         this.moveItem(item, newPath, objectId);
     }
 
+    /**
+     * Moves the given item to the given path in the repository.
+     */
     private void moveItem(CmsItem item, CmsItemPath newPath, Holder<String> objectId) {
         InputStream content = null;
         try {
             CmsPatchset changes = new CmsPatchset(this.repository, this.currentRevision);
             CmsItemPath oldPath = item.getId().getRelPath();
             if (item.getKind() == CmsItemKind.File) {
+                // Add the file at the new path and delete it at the old.
                 content = this.getInputStream(item);
                 changes.add(new FileAdd(newPath, content));
                 changes.add(new FileDelete(oldPath));
             } else {
+                // Move first the folder then all its descendants.
                 changes.add(new FolderAdd(newPath));
                 changes.add(new FolderDelete(oldPath));
                 for (CmsItemId childId : this.lookup.getDescendants(item.getId())) {
@@ -893,6 +984,8 @@ public class ReposCmisRepository {
             }
             this.commit.run(changes);
             CmsItemId newId = new CmsItemIdUrl(this.repository, newPath);
+            // Makes sure that the CmisIdService has up-to-date info after the
+            // move.
             this.idService.deleteItem(item.getId(),
                     this.idService.getCmisId(item.getId()));
             this.idService.putItem(newId, objectId.getValue());
