@@ -16,11 +16,13 @@ import com.google.inject.Injector;
  * run the server on.
  * 
  * To test this class: Start any of the tests in
- * org.apache.chemistry.opencmis.tck.tests.*, and set the following VM
- * parameters:
+ * org.apache.chemistry.opencmis.tck.tests.*, (available in -test-tck jar)
+ * and set the following VM parameters:
  *  -Dorg.apache.chemistry.opencmis.binding.spi.type=local
  *  -Dorg.apache.chemistry.opencmis.binding.local.classname=se.repos.cmis.TestReposCmisServiceFactory
  *  -Dorg.apache.chemistry.opencmis.binding.repositoryRoot=$YOUR_TEST_FOLDER
+ *  
+ * We pass the .basic and .crud test packages.
  */
 public class TestReposCmisServiceFactory extends AbstractServiceFactory {
     private ReposCmisServiceFactory fact;
